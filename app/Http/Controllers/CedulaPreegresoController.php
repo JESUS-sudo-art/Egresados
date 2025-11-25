@@ -13,7 +13,7 @@ class CedulaPreegresoController extends Controller
     public function index()
     {
         // TODO: En producción, obtener el egresado autenticado
-        $egresado = Egresado::with(['estadoCivil'])->first();
+        $egresado = Egresado::with(['estadoCivil'])->where('email', auth()->user()->email)->first();
         $estadosCiviles = CatEstadoCivil::all();
         
         $cedulaExistente = null;
@@ -44,7 +44,7 @@ class CedulaPreegresoController extends Controller
         $isEgresado = $user && $user->hasRole('Egresados');
         
         // TODO: En producción, obtener el egresado autenticado
-        $egresado = Egresado::first();
+        $egresado = Egresado::where('email', $user->email)->first();
         
         if ($isEgresado && $egresado) {
             $cedulaExistente = CedulaPreegreso::where('egresado_id', $egresado->id)->first();
@@ -99,12 +99,23 @@ class CedulaPreegresoController extends Controller
             return redirect()->back()->withErrors(['error' => 'No se encontró el egresado']);
         }
 
+        // Mapear sexo a genero_id (1=Masculino, 2=Femenino, 3=No binario)
+        $generoId = null;
+        if ($validated['sexo'] === 'Hombre') {
+            $generoId = 1;
+        } elseif ($validated['sexo'] === 'Mujer') {
+            $generoId = 2;
+        } elseif ($validated['sexo'] === 'Otro') {
+            $generoId = 3;
+        }
+
         // Actualizar datos del egresado
         $egresado->update([
             'nombre' => $validated['nombres'],
             'apellidos' => $validated['apellido_paterno'] . ' ' . $validated['apellido_materno'],
             'curp' => $validated['curp'],
             'email' => $validated['email'],
+            'genero_id' => $generoId,
             'estado_civil_id' => $validated['estado_civil_id'],
             'tiene_hijos' => $validated['tiene_hijos'],
             'habla_segundo_idioma' => $validated['habla_segundo_idioma'],

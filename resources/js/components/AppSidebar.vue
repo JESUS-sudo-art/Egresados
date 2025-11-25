@@ -25,6 +25,8 @@ const roles = computed(() => (page.props as any)?.auth?.roles ?? []);
 const isAdminGeneral = computed(() => roles.value?.includes('Administrador general'));
 const isAdminUnidad = computed(() => roles.value?.includes('Administrador de unidad'));
 const isAdminAcademico = computed(() => roles.value?.includes('Administrador academico'));
+const isEgresado = computed(() => roles.value?.includes('Egresados'));
+const isEstudiante = computed(() => roles.value?.includes('Estudiantes'));
 
 // Navegación principal (incluye únicamente los accesos solicitados adicionalmente)
 const mainNavItems = computed<NavItem[]>(() => {
@@ -32,6 +34,19 @@ const mainNavItems = computed<NavItem[]>(() => {
         { title: 'Panel', href: dashboard().url, icon: LayoutGrid },
         { title: 'Perfil y datos', href: '/perfil-datos', icon: User },
     ];
+    
+    // Encuestas solo para Egresados y Estudiantes (NO para Admin General)
+    if (isEgresado.value || isEstudiante.value) {
+        items.push({ title: 'Encuesta Pre-Egreso', href: '/encuesta-preegreso', icon: BookOpen });
+        items.push({ title: 'Encuesta de Egreso', href: '/encuesta-egreso', icon: BookOpen });
+    }
+    if (isEgresado.value) {
+        items.push({ title: 'Encuesta Laboral', href: '/encuesta-laboral', icon: BookOpen });
+    }
+    if (isEgresado.value || isEstudiante.value) {
+        items.push({ title: 'Acuses de Seguimiento', href: '/acuses-seguimiento', icon: Shield });
+    }
+    
     if (isAdminGeneral.value) {
         items.push({ title: 'Admin general', href: '/admin-general', icon: Users });
     }

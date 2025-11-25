@@ -19,14 +19,24 @@ class UserRoleController extends Controller
             abort(403, 'No tienes permisos para acceder a esta sección.');
         }
 
-        $users = User::with('roles')->get()->map(function ($user) {
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'roles' => $user->roles->pluck('name'),
-            ];
-        });
+        // Solo mostrar usuarios con roles administrativos
+        $users = User::with('roles')
+            ->whereHas('roles', function ($query) {
+                $query->whereIn('name', [
+                    'Administrador general',
+                    'Administrador de unidad',
+                    'Administrador academico'
+                ]);
+            })
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'roles' => $user->roles->pluck('name'),
+                ];
+            });
 
         // Solo mostrar roles administrativos
         $roles = Role::whereIn('name', [

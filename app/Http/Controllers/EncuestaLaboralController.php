@@ -13,7 +13,7 @@ class EncuestaLaboralController extends Controller
     public function index()
     {
         // TODO: En producción, obtener el egresado autenticado
-        $egresado = Egresado::with(['estadoCivil', 'carreras.carrera'])->first();
+        $egresado = Egresado::with(['estadoCivil', 'carreras.carrera'])->where('email', auth()->user()->email)->first();
         $estadosCiviles = CatEstadoCivil::all();
         
         $encuestaExistente = null;
@@ -105,7 +105,7 @@ class EncuestaLaboralController extends Controller
         ]);
 
         // TODO: En producción, obtener el egresado autenticado
-        $egresado = Egresado::first();
+        $egresado = Egresado::where('email', auth()->user()->email)->first();
         
         if (!$egresado) {
             return redirect()->back()->withErrors(['error' => 'No se encontró el egresado']);

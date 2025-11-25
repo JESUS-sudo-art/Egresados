@@ -9,10 +9,6 @@ class Carrera extends Model
 {
     use SoftDeletes;
     protected $table = 'carrera';
-    
-    const CREATED_AT = 'creado_en';
-    const UPDATED_AT = 'actualizado_en';
-    const DELETED_AT = 'eliminado_en';
 
     protected $fillable = [
         'nombre',

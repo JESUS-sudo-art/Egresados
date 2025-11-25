@@ -9,10 +9,6 @@ class CedulaPreegreso extends Model
 {
     use SoftDeletes;
     protected $table = 'cedula_preegreso';
-    
-    const CREATED_AT = 'creado_en';
-    const UPDATED_AT = 'actualizado_en';
-    const DELETED_AT = 'eliminado_en';
 
     protected $fillable = [
         'egresado_id',

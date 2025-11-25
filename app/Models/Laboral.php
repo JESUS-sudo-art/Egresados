@@ -10,12 +10,6 @@ class Laboral extends Model
     use SoftDeletes;
     protected $table = 'laboral';
 
-    // Columnas personalizadas
-    const CREATED_AT = 'creado_en';
-    const UPDATED_AT = 'actualizado_en';
-    const DELETED_AT = 'eliminado_en';
-    public $timestamps = true;
-
     protected $fillable = [
         'egresado_id',
         'empresa',
@@ -30,9 +24,6 @@ class Laboral extends Model
         'actualmente_activo' => 'boolean',
         'fecha_inicio' => 'date',
         'fecha_fin' => 'date',
-        'creado_en' => 'datetime',
-        'actualizado_en' => 'datetime',
-        'eliminado_en' => 'datetime',
     ];
 
     public function egresado()

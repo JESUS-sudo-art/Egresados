@@ -33,9 +33,8 @@ return new class extends Migration
             $table->char('validado_sice', 1)->nullable()->default('N');
             $table->string('token')->nullable();
             $table->integer('estatus_id')->nullable()->index('egresado_estatus_id_fk');
-            $table->dateTime('creado_en')->nullable()->useCurrent();
-            $table->dateTime('actualizado_en')->useCurrentOnUpdate()->nullable();
-            $table->dateTime('eliminado_en')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
         });
     }
 

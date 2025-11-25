@@ -44,19 +44,31 @@ class CreateNewUser implements CreatesNewUsers
         // Asignar el rol según el tipo de usuario seleccionado
         $user->assignRole($input['user_type']);
 
-        // Si es Egresado o Estudiante, crear registro en tabla egresado
+        // Si es Egresado o Estudiante, asegurar existencia en tabla egresado (sin duplicar)
         if (in_array($input['user_type'], ['Egresados', 'Estudiantes'])) {
+            $egresado = Egresado::where('email', $input['email'])->first();
+
             // Separar nombre y apellidos (asumiendo formato "Nombre Apellidos")
             $nameParts = explode(' ', $input['name'], 2);
             $nombre = $nameParts[0] ?? '';
             $apellidos = $nameParts[1] ?? '';
 
-            Egresado::create([
-                'email' => $input['email'],
-                'nombre' => $nombre,
-                'apellidos' => $apellidos,
-                'estatus_id' => 1, // Estatus activo por defecto
-            ]);
+            if (!$egresado) {
+                Egresado::create([
+                    'email' => $input['email'],
+                    'nombre' => $nombre,
+                    'apellidos' => $apellidos,
+                    'estatus_id' => 1, // Estatus activo por defecto
+                ]);
+            } else {
+                // Actualizar nombre/apellidos si están vacíos, sin alterar otros datos
+                $egresado->nombre = $egresado->nombre ?: $nombre;
+                $egresado->apellidos = $egresado->apellidos ?: $apellidos;
+                if (!$egresado->estatus_id) {
+                    $egresado->estatus_id = 1;
+                }
+                $egresado->save();
+            }
         }
 
         return $user;

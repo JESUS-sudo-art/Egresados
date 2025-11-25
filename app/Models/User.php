@@ -55,6 +55,6 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Unidad::class, 'usuario_unidad', 'usuario_id', 'unidad_id')
             ->withPivot('estatus')
-            ->withTimestamps('creado_en', 'actualizado_en');
+            ->withTimestamps();
     }
 }

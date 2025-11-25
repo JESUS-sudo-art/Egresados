@@ -83,6 +83,7 @@ const submitSearch = () => {
                   <th class="text-left py-2 px-3 text-sm font-semibold">Carreras</th>
                   <th class="text-left py-2 px-3 text-sm font-semibold">Email</th>
                   <th class="text-left py-2 px-3 text-sm font-semibold">Estatus</th>
+                  <th class="text-left py-2 px-3 text-sm font-semibold">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -98,6 +99,15 @@ const submitSearch = () => {
                   <td class="py-2 px-3 text-sm">{{ e.email || '—' }}</td>
                   <td class="py-2 px-3 text-sm">
                     <Badge :variant="e.estatus === 'ACTIVO' ? 'default' : 'outline'" class="text-xs">{{ e.estatus }}</Badge>
+                  </td>
+                  <td class="py-2 px-3 text-sm">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      @click="router.visit(`/egresados/${e.id}`)"
+                    >
+                      Ver perfil
+                    </Button>
                   </td>
                 </tr>
               </tbody>

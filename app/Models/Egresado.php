@@ -10,12 +10,6 @@ class Egresado extends Model
     use SoftDeletes;
     protected $table = 'egresado';
 
-    // Column names in DB are personalizados
-    const CREATED_AT = 'creado_en';
-    const UPDATED_AT = 'actualizado_en';
-    const DELETED_AT = 'eliminado_en';
-    public $timestamps = true;
-
     protected $fillable = [
         'matricula',
         'curp',

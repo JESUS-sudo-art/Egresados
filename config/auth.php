@@ -44,6 +44,26 @@ return [
             'driver' => 'session',
             'provider' => 'egresados',
         ],
+        'encuestas' => [
+            'driver' => 'session',
+            'provider' => 'encuestas',
+        ],
+        'unidades' => [
+            'driver' => 'session',
+            'provider' => 'unidades',
+        ],
+        'carreras' => [
+            'driver' => 'session',
+            'provider' => 'carreras',
+        ],
+        'generaciones' => [
+            'driver' => 'session',
+            'provider' => 'generaciones',
+        ],
+        'ciclos' => [
+            'driver' => 'session',
+            'provider' => 'ciclos',
+        ],
     ],
 
     /*
@@ -70,7 +90,27 @@ return [
         ],
         'egresados' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\Egresado::class),
+            'model' => App\Models\Egresado::class,
+        ],
+        'encuestas' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Encuesta::class,
+        ],
+        'unidades' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Unidad::class,
+        ],
+        'carreras' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Carrera::class,
+        ],
+        'generaciones' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Generacion::class,
+        ],
+        'ciclos' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Ciclo::class,
         ],
 
         // 'users' => [
@@ -107,7 +147,37 @@ return [
         ],
         'egresados' => [
             'provider' => 'egresados',
-            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+        'encuestas' => [
+            'provider' => 'encuestas',
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+        'unidades' => [
+            'provider' => 'unidades',
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+        'carreras' => [
+            'provider' => 'carreras',
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+        'generaciones' => [
+            'provider' => 'generaciones',
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+        'ciclos' => [
+            'provider' => 'ciclos',
+            'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],

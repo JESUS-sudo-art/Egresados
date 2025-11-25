@@ -40,13 +40,13 @@ Route::get('admin-unidad/backup', [App\Http\Controllers\BackupController::class,
 // Rutas para contestar encuestas - permitir también Administrador general
 Route::get('encuesta/{encuestaId}', [App\Http\Controllers\EncuestaController::class, 'show'])
     ->name('encuesta.show')
-    ->middleware(['auth', 'verified', 'role:Administrador general,Estudiantes']);
+    ->middleware(['auth', 'verified', 'role:Administrador general,Estudiantes,Egresados']);
 Route::post('encuesta/{encuestaId}/responder', [App\Http\Controllers\EncuestaController::class, 'store'])
     ->name('encuesta.responder')
-    ->middleware(['auth', 'verified', 'role:Administrador general,Estudiantes']);
+    ->middleware(['auth', 'verified', 'role:Administrador general,Estudiantes,Egresados']);
 Route::get('encuesta/{encuestaId}/mis-respuestas', [App\Http\Controllers\EncuestaController::class, 'misRespuestas'])
     ->name('encuesta.respuestas')
-    ->middleware(['auth', 'verified', 'role:Administrador general,Estudiantes']);
+    ->middleware(['auth', 'verified', 'role:Administrador general,Estudiantes,Egresados']);
 
 // Ruta de Admin Académica con controlador - Admin Académico y Admin General
 $adminAcademicaRoute = Route::get('admin-academica', [App\Http\Controllers\AdminAcademicaController::class, 'index'])
@@ -72,6 +72,23 @@ Route::get('catalogo-egresados', [App\Http\Controllers\EgresadoController::class
     ->name('catalogo-egresados')
     ->middleware(['auth', 'verified', 'role:Administrador general']);
 
+// Ver/Editar perfil de egresado - Solo Admin General
+Route::get('egresados/{id}', [App\Http\Controllers\EgresadoController::class, 'show'])
+    ->name('egresados.show')
+    ->middleware(['auth', 'verified', 'role:Administrador general']);
+Route::put('egresados/{id}', [App\Http\Controllers\EgresadoController::class, 'update'])
+    ->name('egresados.update')
+    ->middleware(['auth', 'verified', 'role:Administrador general']);
+Route::put('egresados/{id}/password', [App\Http\Controllers\EgresadoController::class, 'updatePassword'])
+    ->name('egresados.update-password')
+    ->middleware(['auth', 'verified', 'role:Administrador general']);
+Route::post('egresados/{id}/carreras', [App\Http\Controllers\EgresadoController::class, 'updateCarrera'])
+    ->name('egresados.add-carrera')
+    ->middleware(['auth', 'verified', 'role:Administrador general']);
+Route::delete('egresados/{egresadoId}/carreras/{carreraId}', [App\Http\Controllers\EgresadoController::class, 'deleteCarrera'])
+    ->name('egresados.delete-carrera')
+    ->middleware(['auth', 'verified', 'role:Administrador general']);
+
 // Ruta de Acuses de Seguimiento con controlador - Estudiantes, Egresados y Admin General
 $acusesRoute = Route::get('acuses-seguimiento', [App\Http\Controllers\AcusesSeguimientoController::class, 'index'])
     ->name('acuses-seguimiento')
@@ -93,10 +110,18 @@ $perfilRoute = Route::get('perfil-datos', [App\Http\Controllers\PerfilController
     ->middleware(['auth', 'verified', 'role:Estudiantes,Egresados,Administrador general']);
 
 // Rutas API para Perfil
-Route::post('perfil/datos-personales', [App\Http\Controllers\PerfilController::class, 'updateDatosPersonales'])->name('perfil.update-datos');
-Route::post('perfil/empleos', [App\Http\Controllers\PerfilController::class, 'storeEmpleo'])->name('perfil.store-empleo');
-Route::put('perfil/empleos/{id}', [App\Http\Controllers\PerfilController::class, 'updateEmpleo'])->name('perfil.update-empleo');
-Route::delete('perfil/empleos/{id}', [App\Http\Controllers\PerfilController::class, 'deleteEmpleo'])->name('perfil.delete-empleo');
+Route::post('perfil/datos-personales', [App\Http\Controllers\PerfilController::class, 'updateDatosPersonales'])
+    ->name('perfil.update-datos')
+    ->middleware(['auth', 'verified', 'role:Estudiantes,Egresados,Administrador general']);
+Route::post('perfil/empleos', [App\Http\Controllers\PerfilController::class, 'storeEmpleo'])
+    ->name('perfil.store-empleo')
+    ->middleware(['auth', 'verified', 'role:Estudiantes,Egresados,Administrador general']);
+Route::put('perfil/empleos/{id}', [App\Http\Controllers\PerfilController::class, 'updateEmpleo'])
+    ->name('perfil.update-empleo')
+    ->middleware(['auth', 'verified', 'role:Estudiantes,Egresados,Administrador general']);
+Route::delete('perfil/empleos/{id}', [App\Http\Controllers\PerfilController::class, 'deleteEmpleo'])
+    ->name('perfil.delete-empleo')
+    ->middleware(['auth', 'verified', 'role:Estudiantes,Egresados,Administrador general']);
 
 // Rutas API para Cédula Pre-Egreso
 Route::post('encuesta-preegreso/store', [App\Http\Controllers\CedulaPreegresoController::class, 'store'])->name('cedula-preegreso.store');

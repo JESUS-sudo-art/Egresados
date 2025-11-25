@@ -13,8 +13,9 @@ class AcusesSeguimientoController extends Controller
 {
     public function index()
     {
-        // TODO: En producción, obtener el egresado autenticado
-        $egresado = Egresado::with(['carreras.carrera'])->first();
+        $egresado = Egresado::with(['carreras.carrera'])
+            ->where('email', auth()->user()->email)
+            ->first();
         
         $encuestas = [];
         
@@ -63,8 +64,9 @@ class AcusesSeguimientoController extends Controller
     
     public function descargarAcuse($tipo, $id)
     {
-        // TODO: En producción, obtener el egresado autenticado
-        $egresado = Egresado::with(['carreras.carrera.unidades'])->first();
+        $egresado = Egresado::with(['carreras.carrera.unidades'])
+            ->where('email', auth()->user()->email)
+            ->first();
         
         if (!$egresado) {
             return redirect()->back()->withErrors(['error' => 'No se encontró el egresado']);
