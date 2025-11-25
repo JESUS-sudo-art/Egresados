@@ -14,18 +14,38 @@ class PerfilController extends Controller
 {
     public function index()
     {
-        // TODO: En producción, obtener el egresado autenticado
-        // Por ahora, tomamos el primer egresado como ejemplo
+        // Obtener el egresado asociado al email del usuario autenticado
+        $user = auth()->user();
+        
+        if (!$user) {
+            abort(403, 'Usuario no autenticado');
+        }
+        
         $egresado = Egresado::with(['genero', 'estadoCivil', 'estatus', 'carreras.carrera', 'carreras.generacion'])
+            ->where('email', $user->email)
             ->first();
+
+        // Si no existe un egresado, crear uno básico con los datos del usuario
+        if (!$egresado) {
+            $egresado = Egresado::create([
+                'email' => $user->email,
+                'nombre' => $user->name ?? '',
+                'apellidos' => '',
+                'estatus_id' => 1, // Asumiendo que 1 es un estatus por defecto
+            ]);
+            
+            // Recargar con relaciones
+            $egresado = Egresado::with(['genero', 'estadoCivil', 'estatus', 'carreras.carrera', 'carreras.generacion'])
+                ->find($egresado->id);
+        }
 
         $generos = CatGenero::all();
         $estadosCiviles = CatEstadoCivil::all();
         $estatuses = CatEstatus::all();
         
-        $empleos = $egresado ? Laboral::where('egresado_id', $egresado->id)
+        $empleos = Laboral::where('egresado_id', $egresado->id)
             ->orderBy('fecha_inicio', 'desc')
-            ->get() : [];
+            ->get();
 
         return Inertia::render('modules/PerfilDatos', [
             'egresado' => $egresado,
@@ -51,7 +71,16 @@ class PerfilController extends Controller
             'estatus_id' => 'nullable|integer',
         ]);
 
-        $egresado = Egresado::findOrFail($validated['id']);
+        $user = auth()->user();
+        if (!$user) {
+            abort(403, 'Usuario no autenticado');
+        }
+
+        // Verificar que el egresado a actualizar pertenece al usuario autenticado
+        $egresado = Egresado::where('id', $validated['id'])
+            ->where('email', $user->email)
+            ->firstOrFail();
+        
         $egresado->update($validated);
 
         return redirect()->back()->with('success', 'Datos personales actualizados correctamente');
@@ -69,6 +98,16 @@ class PerfilController extends Controller
             'actualmente_activo' => 'nullable|boolean',
         ]);
 
+        $user = auth()->user();
+        if (!$user) {
+            abort(403, 'Usuario no autenticado');
+        }
+
+        // Verificar que el egresado_id pertenece al usuario autenticado
+        $egresado = Egresado::where('id', $validated['egresado_id'])
+            ->where('email', $user->email)
+            ->firstOrFail();
+
         Laboral::create($validated);
 
         return redirect()->back()->with('success', 'Empleo agregado correctamente');
@@ -85,7 +124,16 @@ class PerfilController extends Controller
             'actualmente_activo' => 'nullable|boolean',
         ]);
 
-        $empleo = Laboral::findOrFail($id);
+        $user = auth()->user();
+        if (!$user) {
+            abort(403, 'Usuario no autenticado');
+        }
+
+        // Verificar que el empleo pertenece a un egresado del usuario autenticado
+        $empleo = Laboral::whereHas('egresado', function($query) use ($user) {
+            $query->where('email', $user->email);
+        })->findOrFail($id);
+        
         $empleo->update($validated);
 
         return redirect()->back()->with('success', 'Empleo actualizado correctamente');
@@ -93,7 +141,16 @@ class PerfilController extends Controller
 
     public function deleteEmpleo($id)
     {
-        $empleo = Laboral::findOrFail($id);
+        $user = auth()->user();
+        if (!$user) {
+            abort(403, 'Usuario no autenticado');
+        }
+
+        // Verificar que el empleo pertenece a un egresado del usuario autenticado
+        $empleo = Laboral::whereHas('egresado', function($query) use ($user) {
+            $query->where('email', $user->email);
+        })->findOrFail($id);
+        
         $empleo->delete();
 
         return redirect()->back()->with('success', 'Empleo eliminado correctamente');

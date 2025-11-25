@@ -3,14 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class EncuestaLaboral extends Model
 {
+    use SoftDeletes;
     protected $table = 'encuesta_laboral';
-    
+
     const CREATED_AT = 'creado_en';
     const UPDATED_AT = 'actualizado_en';
     const DELETED_AT = 'eliminado_en';
+    public $timestamps = true;
 
     protected $fillable = [
         'egresado_id',

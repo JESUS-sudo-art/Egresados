@@ -3,12 +3,18 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Egresado extends Model
 {
+    use SoftDeletes;
     protected $table = 'egresado';
-    
-    public $timestamps = false;
+
+    // Column names in DB are personalizados
+    const CREATED_AT = 'creado_en';
+    const UPDATED_AT = 'actualizado_en';
+    const DELETED_AT = 'eliminado_en';
+    public $timestamps = true;
 
     protected $fillable = [
         'matricula',
@@ -39,9 +45,6 @@ class Egresado extends Model
         'habla_lengua_indigena' => 'boolean',
         'habla_segundo_idioma' => 'boolean',
         'pertenece_grupo_etnico' => 'boolean',
-        'creado_en' => 'datetime',
-        'actualizado_en' => 'datetime',
-        'eliminado_en' => 'datetime',
     ];
 
     public function genero()

@@ -106,7 +106,16 @@ class AdminUnidadController extends Controller
             'texto' => 'required|string',
             'tipo' => 'required|string|in:Abierta,Opción Múltiple,Casillas de Verificación,Escala Likert,Sí/No,Numérica,Fecha',
             'orden' => 'nullable|integer|min:0',
+            'dimension_id' => 'nullable|integer|exists:dimension,id',
         ]);
+
+        // Validar que la dimensión (si viene) pertenezca a la misma encuesta
+        if (!empty($validated['dimension_id'])) {
+            $belongs = \App\Models\Dimension::where('id',$validated['dimension_id'])->where('encuesta_id',$encuestaId)->exists();
+            if (!$belongs) {
+                return response()->json(['error' => 'La dimensión no pertenece a la encuesta'], 422);
+            }
+        }
 
         $tipo = TipoPregunta::firstOrCreate(['descripcion' => $validated['tipo']], ['estatus' => 'A']);
         $pregunta = Pregunta::create([
@@ -114,6 +123,7 @@ class AdminUnidadController extends Controller
             'texto' => $validated['texto'],
             'tipo_pregunta_id' => $tipo->id,
             'orden' => $validated['orden'] ?? 0,
+            'dimension_id' => $validated['dimension_id'] ?? null,
         ]);
         // Si la petición espera JSON (ej. llamada manual con XHR) devolver JSON
         if ($request->expectsJson()) {
@@ -130,12 +140,21 @@ class AdminUnidadController extends Controller
             'texto' => 'required|string',
             'tipo' => 'required|string|in:Abierta,Opción Múltiple,Casillas de Verificación,Escala Likert,Sí/No,Numérica,Fecha',
             'orden' => 'nullable|integer|min:0',
+            'dimension_id' => 'nullable|integer|exists:dimension,id',
         ]);
+
+        if (!empty($validated['dimension_id'])) {
+            $belongs = \App\Models\Dimension::where('id',$validated['dimension_id'])->where('encuesta_id',$pregunta->encuesta_id)->exists();
+            if (!$belongs) {
+                return response()->json(['error' => 'La dimensión no pertenece a la encuesta de la pregunta'], 422);
+            }
+        }
         $tipo = TipoPregunta::firstOrCreate(['descripcion' => $validated['tipo']], ['estatus' => 'A']);
         $pregunta->update([
             'texto' => $validated['texto'],
             'tipo_pregunta_id' => $tipo->id,
             'orden' => $validated['orden'] ?? 0,
+            'dimension_id' => $validated['dimension_id'] ?? $pregunta->dimension_id,
         ]);
         if ($request->expectsJson()) {
             return response()->json($pregunta->load(['opciones','tipo']));

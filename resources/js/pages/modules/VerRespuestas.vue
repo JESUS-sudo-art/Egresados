@@ -29,11 +29,19 @@ interface Pregunta {
   respuestas: Respuesta[]
 }
 
+interface Dimension {
+  id: number | null
+  nombre: string
+  descripcion: string | null
+  orden: number | null
+  preguntas: Pregunta[]
+}
+
 interface Encuesta {
   id: number
   nombre: string
   descripcion: string | null
-  preguntas: Pregunta[]
+  dimensiones: Dimension[]
 }
 
 interface Props {
@@ -114,8 +122,13 @@ const formatearRespuesta = (pregunta: Pregunta) => {
       </div>
 
       <!-- Preguntas y Respuestas -->
-      <div class="space-y-4">
-        <Card v-for="(pregunta, index) in encuesta.preguntas" :key="pregunta.id">
+      <div class="space-y-6">
+        <div v-for="(dimension, dIndex) in encuesta.dimensiones" :key="`dim-${dimension.id}-${dIndex}`" class="space-y-4">
+          <h2 class="text-2xl font-semibold mt-6" v-if="dimension.nombre">
+            {{ dimension.nombre }}
+            <span v-if="dimension.descripcion" class="block text-sm text-muted-foreground font-normal">{{ dimension.descripcion }}</span>
+          </h2>
+          <Card v-for="(pregunta, index) in dimension.preguntas" :key="pregunta.id">
           <CardHeader>
             <div class="flex items-start gap-3">
               <div class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold">
@@ -184,7 +197,8 @@ const formatearRespuesta = (pregunta: Pregunta) => {
               </div>
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </div>
       </div>
 
       <!-- Botón para volver -->

@@ -3,14 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Respuesta extends Model
 {
+    // No SoftDeletes: tabla no tiene columna eliminado_en / deleted_at
     protected $table = 'respuesta';
-
-    const CREATED_AT = 'creado_en';
-    const UPDATED_AT = null; // No tiene actualizado_en
-    const DELETED_AT = null;
 
     protected $fillable = [
         'egresado_id',

@@ -3,11 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Encuesta extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'encuesta';
 
+    // Map custom timestamp and soft delete column names to Laravel conventions
     const CREATED_AT = 'creado_en';
     const UPDATED_AT = 'actualizado_en';
     const DELETED_AT = 'eliminado_en';
@@ -33,5 +37,10 @@ class Encuesta extends Model
     public function asignaciones()
     {
         return $this->hasMany(EncuestaAsignada::class, 'encuesta_id');
+    }
+
+    public function dimensiones()
+    {
+        return $this->hasMany(Dimension::class, 'encuesta_id');
     }
 }

@@ -3,8 +3,11 @@
 namespace App\Actions\Fortify;
 
 use App\Models\User;
+use App\Models\Egresado;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 class CreateNewUser implements CreatesNewUsers
@@ -28,7 +31,8 @@ class CreateNewUser implements CreatesNewUsers
                 Rule::unique(User::class),
             ],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-            'user_type' => ['required', 'string', 'in:Estudiantes,Egresados,Administrador de unidad,Administrador academico'],
+            // Registro público solo para Estudiantes y Egresados
+            'user_type' => ['required', 'string', 'in:Estudiantes,Egresados'],
         ])->validate();
 
         $user = User::create([
@@ -39,6 +43,21 @@ class CreateNewUser implements CreatesNewUsers
 
         // Asignar el rol según el tipo de usuario seleccionado
         $user->assignRole($input['user_type']);
+
+        // Si es Egresado o Estudiante, crear registro en tabla egresado
+        if (in_array($input['user_type'], ['Egresados', 'Estudiantes'])) {
+            // Separar nombre y apellidos (asumiendo formato "Nombre Apellidos")
+            $nameParts = explode(' ', $input['name'], 2);
+            $nombre = $nameParts[0] ?? '';
+            $apellidos = $nameParts[1] ?? '';
+
+            Egresado::create([
+                'email' => $input['email'],
+                'nombre' => $nombre,
+                'apellidos' => $apellidos,
+                'estatus_id' => 1, // Estatus activo por defecto
+            ]);
+        }
 
         return $user;
     }

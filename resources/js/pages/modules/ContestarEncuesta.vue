@@ -25,11 +25,19 @@ interface Pregunta {
   opciones: Opcion[]
 }
 
+interface Dimension {
+  id: number | null
+  nombre: string
+  descripcion: string | null
+  orden: number | null
+  preguntas: Pregunta[]
+}
+
 interface Encuesta {
   id: number
   nombre: string
   descripcion: string | null
-  preguntas: Pregunta[]
+  dimensiones: Dimension[]
 }
 
 interface Props {
@@ -42,12 +50,14 @@ const props = defineProps<Props>()
 const respuestas = ref<Record<number, any>>({})
 
 // Inicializar respuestas vacías
-props.encuesta.preguntas.forEach(pregunta => {
-  if (pregunta.tipo === 'Casillas de Verificación') {
-    respuestas.value[pregunta.id] = []
-  } else {
-    respuestas.value[pregunta.id] = null
-  }
+props.encuesta.dimensiones.forEach(dimension => {
+  dimension.preguntas.forEach(pregunta => {
+    if (pregunta.tipo === 'Casillas de Verificación') {
+      respuestas.value[pregunta.id] = []
+    } else {
+      respuestas.value[pregunta.id] = null
+    }
+  })
 })
 
 const form = useForm({
@@ -136,7 +146,12 @@ const enviarEncuesta = () => {
       </div>
 
       <form @submit.prevent="enviarEncuesta" class="space-y-6">
-        <Card v-for="(pregunta, index) in encuesta.preguntas" :key="pregunta.id">
+        <div v-for="(dimension, dIndex) in encuesta.dimensiones" :key="`dim-${dimension.id}-${dIndex}`" class="space-y-4">
+          <h2 class="text-2xl font-semibold mt-8" v-if="dimension.nombre">
+            {{ dimension.nombre }}
+            <span v-if="dimension.descripcion" class="block text-sm text-muted-foreground font-normal">{{ dimension.descripcion }}</span>
+          </h2>
+          <Card v-for="(pregunta, index) in dimension.preguntas" :key="pregunta.id">
           <CardHeader>
             <CardTitle class="text-lg">
               <span class="text-muted-foreground mr-2">{{ index + 1 }}.</span>
@@ -239,7 +254,8 @@ const enviarEncuesta = () => {
               />
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </div>
 
         <div class="flex justify-end gap-4 pt-4">
           <Button type="button" variant="outline" @click="() => $inertia.visit('/dashboard')">

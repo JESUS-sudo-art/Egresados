@@ -31,14 +31,12 @@ class RolesAndPermissionsSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission]);
         }
 
-        // Crear roles
+        // Crear roles (solo administrativos)
         $roles = [
-            'Estudiantes',
-            'Egresados',
             'Administrador general',
             'Administrador de unidad',
             'Administrador academico',
-            'Comunidad universitaria',
+            'Egresados',
         ];
 
         foreach ($roles as $roleName) {
@@ -60,19 +58,6 @@ class RolesAndPermissionsSeeder extends Seeder
         $adminAcademico = Role::findByName('Administrador academico');
         $adminAcademico->syncPermissions(['ver', 'ver_uno', 'crear', 'actualizar', 'eliminar']);
 
-        // Asignar permisos a Egresados
-        // Pueden: registrarse, actualizar datos, responder encuestas, consultar encuestas previas
-        $egresados = Role::findByName('Egresados');
-        $egresados->syncPermissions(['ver', 'ver_uno', 'actualizar']);
 
-        // Asignar permisos a Estudiantes
-        // Pueden: registrarse, actualizar información académica
-        $estudiantes = Role::findByName('Estudiantes');
-        $estudiantes->syncPermissions(['ver', 'ver_uno', 'actualizar']);
-
-        // Asignar permisos a Comunidad universitaria
-        // Pueden: visualizar información de seguimiento de egresados, consultar reportes
-        $comunidad = Role::findByName('Comunidad universitaria');
-        $comunidad->syncPermissions(['ver']);
     }
 }

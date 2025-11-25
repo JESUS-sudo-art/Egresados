@@ -45,45 +45,9 @@ class TestUsersSeeder extends Seeder
         );
         $adminAcademico->syncRoles(['Administrador academico']);
 
-        // Usuario Egresado
-        $egresado = User::firstOrCreate(
-            ['email' => 'egresado@example.com'],
-            [
-                'name' => 'Juan Egresado',
-                'password' => bcrypt('password'),
-                'email_verified_at' => now(),
-            ]
-        );
-        $egresado->syncRoles(['Egresados']);
-
-        // Usuario Estudiante
-        $estudiante = User::firstOrCreate(
-            ['email' => 'estudiante@example.com'],
-            [
-                'name' => 'María Estudiante',
-                'password' => bcrypt('password'),
-                'email_verified_at' => now(),
-            ]
-        );
-        $estudiante->syncRoles(['Estudiantes']);
-
-        // Usuario Comunidad Universitaria
-        $comunidad = User::firstOrCreate(
-            ['email' => 'comunidad@example.com'],
-            [
-                'name' => 'Carlos Comunidad',
-                'password' => bcrypt('password'),
-                'email_verified_at' => now(),
-            ]
-        );
-        $comunidad->syncRoles(['Comunidad universitaria']);
-
         $this->command->info('✅ Usuarios de prueba creados:');
         $this->command->info('   - jortega8159@gmail.com (Administrador general) - password');
         $this->command->info('   - admin.unidad@example.com (Administrador de unidad) - password');
         $this->command->info('   - admin.academico@example.com (Administrador academico) - password');
-        $this->command->info('   - egresado@example.com (Egresados) - password');
-        $this->command->info('   - estudiante@example.com (Estudiantes) - password');
-        $this->command->info('   - comunidad@example.com (Comunidad universitaria) - password');
     }
 }

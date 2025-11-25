@@ -16,9 +16,12 @@ class EncuestaController extends Controller
     {
         $user = Auth::user();
         
-        $encuesta = Encuesta::with(['preguntas' => function($query) {
-            $query->with(['opciones', 'tipo'])->orderBy('orden');
-        }])->findOrFail($encuestaId);
+        $encuesta = Encuesta::with([
+            'dimensiones' => function($q) { $q->orderBy('orden'); },
+            'preguntas' => function($query) {
+                $query->with(['opciones', 'tipo', 'dimension'])->orderBy('orden');
+            }
+        ])->findOrFail($encuestaId);
 
         // Verificar que la encuesta esté activa
         if ($encuesta->estatus !== 'A') {
@@ -42,26 +45,64 @@ class EncuestaController extends Controller
             'primera_pregunta_opciones' => $encuesta->preguntas->first() ? $encuesta->preguntas->first()->opciones->toArray() : []
         ]);
 
+        // Agrupar preguntas por dimensión
+        $dimensiones = $encuesta->dimensiones->map(function($dimension) use ($encuesta) {
+            $preguntasDimension = $encuesta->preguntas->where('dimension_id', $dimension->id)->map(function($pregunta) {
+                return [
+                    'id' => $pregunta->id,
+                    'texto' => $pregunta->texto,
+                    'tipo' => $pregunta->tipo->descripcion,
+                    'orden' => $pregunta->orden,
+                    'opciones' => $pregunta->opciones->map(function($opcion) {
+                        return [
+                            'id' => $opcion->id,
+                            'texto' => $opcion->texto,
+                            'valor' => $opcion->valor,
+                        ];
+                    }),
+                ];
+            })->values();
+
+            return [
+                'id' => $dimension->id,
+                'nombre' => $dimension->nombre,
+                'descripcion' => $dimension->descripcion,
+                'orden' => $dimension->orden,
+                'preguntas' => $preguntasDimension,
+            ];
+        })->values();
+
+        $sinDimension = $encuesta->preguntas->whereNull('dimension_id')->map(function($pregunta) {
+            return [
+                'id' => $pregunta->id,
+                'texto' => $pregunta->texto,
+                'tipo' => $pregunta->tipo->descripcion,
+                'orden' => $pregunta->orden,
+                'opciones' => $pregunta->opciones->map(function($opcion) {
+                    return [
+                        'id' => $opcion->id,
+                        'texto' => $opcion->texto,
+                        'valor' => $opcion->valor,
+                    ];
+                }),
+            ];
+        })->values();
+        if ($sinDimension->count() > 0) {
+            $dimensiones->push([
+                'id' => null,
+                'nombre' => 'Otras Preguntas',
+                'descripcion' => null,
+                'orden' => 9999,
+                'preguntas' => $sinDimension,
+            ]);
+        }
+
         return Inertia::render('modules/ContestarEncuesta', [
             'encuesta' => [
                 'id' => $encuesta->id,
                 'nombre' => $encuesta->nombre,
                 'descripcion' => $encuesta->descripcion,
-                'preguntas' => $encuesta->preguntas->map(function($pregunta) {
-                    return [
-                        'id' => $pregunta->id,
-                        'texto' => $pregunta->texto,
-                        'tipo' => $pregunta->tipo->descripcion,
-                        'orden' => $pregunta->orden,
-                        'opciones' => $pregunta->opciones->map(function($opcion) {
-                            return [
-                                'id' => $opcion->id,
-                                'texto' => $opcion->texto,
-                                'valor' => $opcion->valor,
-                            ];
-                        }),
-                    ];
-                }),
+                'dimensiones' => $dimensiones,
             ],
         ]);
     }
@@ -160,9 +201,12 @@ class EncuestaController extends Controller
     {
         $user = Auth::user();
         
-        $encuesta = Encuesta::with(['preguntas' => function($query) {
-            $query->with(['opciones', 'tipo'])->orderBy('orden');
-        }])->findOrFail($encuestaId);
+        $encuesta = Encuesta::with([
+            'dimensiones' => function($q) { $q->orderBy('orden'); },
+            'preguntas' => function($query) {
+                $query->with(['opciones', 'tipo', 'dimension'])->orderBy('orden');
+            }
+        ])->findOrFail($encuestaId);
 
         // Obtener las respuestas del usuario para esta encuesta
         $respuestas = Respuesta::with(['pregunta', 'opcion'])
@@ -173,36 +217,78 @@ class EncuestaController extends Controller
         // Organizar respuestas por pregunta
         $respuestasPorPregunta = $respuestas->groupBy('pregunta_id');
 
+        $dimensiones = $encuesta->dimensiones->map(function($dimension) use ($encuesta, $respuestasPorPregunta) {
+            $preguntasDimension = $encuesta->preguntas->where('dimension_id', $dimension->id)->map(function($pregunta) use ($respuestasPorPregunta) {
+                $respuestasPregunta = $respuestasPorPregunta->get($pregunta->id, collect());
+                return [
+                    'id' => $pregunta->id,
+                    'texto' => $pregunta->texto,
+                    'tipo' => $pregunta->tipo->descripcion,
+                    'orden' => $pregunta->orden,
+                    'opciones' => $pregunta->opciones->map(function($opcion) {
+                        return [
+                            'id' => $opcion->id,
+                            'texto' => $opcion->texto,
+                            'valor' => $opcion->valor,
+                        ];
+                    }),
+                    'respuestas' => $respuestasPregunta->map(function($resp) {
+                        return [
+                            'opcion_id' => $resp->opcion_id,
+                            'opcion_texto' => $resp->opcion ? $resp->opcion->texto : null,
+                            'respuesta_texto' => $resp->respuesta_texto,
+                            'respuesta_entero' => $resp->respuesta_entero,
+                        ];
+                    })->values()->all(),
+                ];
+            })->values();
+            return [
+                'id' => $dimension->id,
+                'nombre' => $dimension->nombre,
+                'descripcion' => $dimension->descripcion,
+                'orden' => $dimension->orden,
+                'preguntas' => $preguntasDimension,
+            ];
+        })->values();
+        $sinDimension = $encuesta->preguntas->whereNull('dimension_id')->map(function($pregunta) use ($respuestasPorPregunta) {
+            $respuestasPregunta = $respuestasPorPregunta->get($pregunta->id, collect());
+            return [
+                'id' => $pregunta->id,
+                'texto' => $pregunta->texto,
+                'tipo' => $pregunta->tipo->descripcion,
+                'orden' => $pregunta->orden,
+                'opciones' => $pregunta->opciones->map(function($opcion) {
+                    return [
+                        'id' => $opcion->id,
+                        'texto' => $opcion->texto,
+                        'valor' => $opcion->valor,
+                    ];
+                }),
+                'respuestas' => $respuestasPregunta->map(function($resp) {
+                    return [
+                        'opcion_id' => $resp->opcion_id,
+                        'opcion_texto' => $resp->opcion ? $resp->opcion->texto : null,
+                        'respuesta_texto' => $resp->respuesta_texto,
+                        'respuesta_entero' => $resp->respuesta_entero,
+                    ];
+                })->values()->all(),
+            ];
+        })->values();
+        if ($sinDimension->count() > 0) {
+            $dimensiones->push([
+                'id' => null,
+                'nombre' => 'Otras Preguntas',
+                'descripcion' => null,
+                'orden' => 9999,
+                'preguntas' => $sinDimension,
+            ]);
+        }
         return Inertia::render('modules/VerRespuestas', [
             'encuesta' => [
                 'id' => $encuesta->id,
                 'nombre' => $encuesta->nombre,
                 'descripcion' => $encuesta->descripcion,
-                'preguntas' => $encuesta->preguntas->map(function($pregunta) use ($respuestasPorPregunta) {
-                    $respuestasPregunta = $respuestasPorPregunta->get($pregunta->id, collect());
-                    
-                    return [
-                        'id' => $pregunta->id,
-                        'texto' => $pregunta->texto,
-                        'tipo' => $pregunta->tipo->descripcion,
-                        'orden' => $pregunta->orden,
-                        'opciones' => $pregunta->opciones->map(function($opcion) {
-                            return [
-                                'id' => $opcion->id,
-                                'texto' => $opcion->texto,
-                                'valor' => $opcion->valor,
-                            ];
-                        }),
-                        'respuestas' => $respuestasPregunta->map(function($resp) {
-                            return [
-                                'opcion_id' => $resp->opcion_id,
-                                'opcion_texto' => $resp->opcion ? $resp->opcion->texto : null,
-                                'respuesta_texto' => $resp->respuesta_texto,
-                                'respuesta_entero' => $resp->respuesta_entero,
-                            ];
-                        })->values()->all(),
-                    ];
-                }),
+                'dimensiones' => $dimensiones,
             ],
         ]);
     }

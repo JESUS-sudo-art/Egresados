@@ -44,6 +44,7 @@ const mainNavItems = computed<NavItem[]>(() => {
     if (isAdminGeneral.value) {
         items.push({ title: 'Gestor de permisos', href: '/permisos', icon: Shield });
         items.push({ title: 'Asignar roles', href: '/usuarios/roles', icon: Settings });
+        items.push({ title: 'Invitaciones', href: '/admin/invitations', icon: Settings });
         items.push({ title: 'Catálogo egresados', href: '/catalogo-egresados', icon: Users });
     }
     return items;

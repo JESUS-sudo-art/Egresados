@@ -14,7 +14,7 @@ interface Unidad { id:number; nombre:string }
 interface TipoPregunta { id:number; descripcion:string }
 interface Opcion { id:number; texto:string; valor:number|null; orden:number|null }
 interface Tipo { id:number, descripcion:string }
-interface Pregunta { id:number; texto:string; orden:number|null; tipo?:Tipo; opciones:Opcion[] }
+interface Pregunta { id:number; texto:string; orden:number|null; tipo?:Tipo; opciones:Opcion[]; dimension_id?:number|null }
 
 interface Props {
   encuestas: Encuesta[]
@@ -26,7 +26,7 @@ interface Props {
 }
 const props = defineProps<Props>()
 
-const tab = ref<'encuestas' | 'preguntas' | 'asignaciones'>('encuestas')
+const tab = ref<'encuestas' | 'preguntas' | 'dimensiones' | 'asignaciones'>('encuestas')
 const encuestaSeleccionadaId = ref<number | null>(null)
 
 // Gestor de Encuestas
@@ -91,12 +91,78 @@ function cargarPreguntas(){
   }
   xhr.send()
 }
+
+// Dimensiones
+interface Dimension { id:number; nombre:string; descripcion?:string|null; orden:number|null; preguntas_count?:number }
+const dimensiones = ref<Dimension[]>([])
+const cargandoDimensiones = ref(false)
+const encuestaDimensionesSeleccionadaId = ref<number|null>(null)
+const formDimension = useForm({ nombre:'', descripcion:'', orden:0 })
+const editandoDimensionId = ref<number|null>(null)
+const reassignTarget = ref<'null'|number|null>(null)
+
+function cargarDimensiones(){
+  if (!encuestaDimensionesSeleccionadaId.value) return
+  cargandoDimensiones.value = true
+  const xhr = new XMLHttpRequest()
+  xhr.open('GET', `/admin-unidad/encuestas/${encuestaDimensionesSeleccionadaId.value}/dimensiones`)
+  xhr.setRequestHeader('X-Requested-With','XMLHttpRequest')
+  xhr.setRequestHeader('Accept','application/json')
+  xhr.onload = () => {
+    if (xhr.status === 200){
+      const data = JSON.parse(xhr.responseText)
+      dimensiones.value = data.dimensiones
+    }
+    cargandoDimensiones.value = false
+  }
+  xhr.onerror = () => { cargandoDimensiones.value = false }
+  xhr.send()
+}
+
+function crearDimension(){
+  if (!encuestaDimensionesSeleccionadaId.value) return
+  formDimension.post(`/admin-unidad/encuestas/${encuestaDimensionesSeleccionadaId.value}/dimensiones`, {
+    onSuccess: () => {
+      formDimension.reset(); formDimension.clearErrors(); cargarDimensiones()
+    }
+  })
+}
+
+function iniciarEdicionDimension(d:Dimension){
+  editandoDimensionId.value = d.id
+  formDimension.nombre = d.nombre
+  formDimension.descripcion = d.descripcion || ''
+  formDimension.orden = d.orden || 0
+}
+
+function cancelarEdicionDimension(){
+  editandoDimensionId.value = null
+  formDimension.reset(); formDimension.clearErrors()
+}
+
+function actualizarDimension(){
+  if (!editandoDimensionId.value) return
+  formDimension.put(`/admin-unidad/dimensiones/${editandoDimensionId.value}`, {
+    onSuccess: () => { cancelarEdicionDimension(); cargarDimensiones() }
+  })
+}
+
+function eliminarDimension(id:number){
+  let qs = ''
+  if (reassignTarget.value !== null){
+    qs = `?reassign_to=${reassignTarget.value}`
+  }
+  router.delete(`/admin-unidad/dimensiones/${id}${qs}`, {
+    onSuccess: () => { reassignTarget.value = null; cargarDimensiones() }
+  })
+}
 function agregarPregunta(){
   if (!encuestaSeleccionadaId.value) return
   formPregunta.post(`/admin-unidad/encuestas/${encuestaSeleccionadaId.value}/preguntas`, { onSuccess: () => { formPregunta.reset('texto','orden'); cargarPreguntas() } })
 }
 function actualizarPregunta(p:Pregunta){
-  router.put(`/admin-unidad/preguntas/${p.id}`, { texto:p.texto, tipo:p.tipo?.descripcion ?? 'Abierta', orden:p.orden ?? 0 }, { onSuccess: cargarPreguntas })
+  // Edición general no reasigna dimensión; gestión de dimensión se hace en tab Dimensiones
+  router.put(`/admin-unidad/preguntas/${p.id}`, { texto:p.texto, tipo:p.tipo?.descripcion ?? 'Abierta', orden:p.orden ?? 0, dimension_id: p.dimension_id ?? null }, { onSuccess: cargarPreguntas })
 }
 function borrarPregunta(id:number){ if (confirm('¿Eliminar pregunta?')) router.delete(`/admin-unidad/preguntas/${id}`, { onSuccess: cargarPreguntas }) }
 
@@ -317,6 +383,53 @@ function guardarYPublicar() {
     guardandoCambios.value = false
   }
 }
+// Preguntas por dimensión (en tab dimensiones)
+const preguntasDimensiones = ref<Pregunta[]>([])
+const cargandoPreguntasDim = ref(false)
+const selectedDimensionId = ref<number|null>(null)
+const formPreguntaDim = useForm({ texto:'', tipo:'Abierta', orden:0, dimension_id: null as number|null })
+const tiposDim = tipos
+
+function cargarPreguntasDimension(){
+  if (!encuestaDimensionesSeleccionadaId.value) return
+  cargandoPreguntasDim.value = true
+  const xhr = new XMLHttpRequest()
+  xhr.open('GET', `/admin-unidad/encuestas/${encuestaDimensionesSeleccionadaId.value}/preguntas`)
+  xhr.setRequestHeader('X-Requested-With','XMLHttpRequest')
+  xhr.setRequestHeader('Accept','application/json')
+  xhr.onload = () => {
+    if (xhr.status === 200){
+      const data = JSON.parse(xhr.responseText)
+      preguntasDimensiones.value = data
+    }
+    cargandoPreguntasDim.value = false
+  }
+  xhr.onerror = () => { cargandoPreguntasDim.value = false }
+  xhr.send()
+}
+
+function crearPreguntaEnDimension(){
+  if (!encuestaDimensionesSeleccionadaId.value || !selectedDimensionId.value) return
+  formPreguntaDim.dimension_id = selectedDimensionId.value
+  formPreguntaDim.post(`/admin-unidad/encuestas/${encuestaDimensionesSeleccionadaId.value}/preguntas`, {
+    onSuccess: () => { formPreguntaDim.reset('texto','orden'); formPreguntaDim.dimension_id = selectedDimensionId.value; cargarPreguntasDimension() }
+  })
+}
+
+function actualizarPreguntaDim(p:Pregunta){
+  router.put(`/admin-unidad/preguntas/${p.id}`, { texto:p.texto, tipo:p.tipo?.descripcion ?? 'Abierta', orden:p.orden ?? 0, dimension_id: selectedDimensionId.value || null }, { onSuccess: cargarPreguntasDimension })
+}
+
+function eliminarPreguntaDim(id:number){
+  if (!confirm('¿Eliminar pregunta?')) return
+  router.delete(`/admin-unidad/preguntas/${id}`, { onSuccess: cargarPreguntasDimension })
+}
+
+const preguntasFiltradas = computed(()=>{
+  if (!selectedDimensionId.value) return []
+  return preguntasDimensiones.value.filter(p => (p as any).dimension_id === selectedDimensionId.value)
+})
+
 
 // Asignaciones
 const formAsignacion = useForm({ 
@@ -356,6 +469,7 @@ onMounted(()=>{ /* no-op */ })
       <div class="flex border-b mb-6">
         <button @click="tab='encuestas'" :class="['px-6 py-3 font-medium border-b-2', tab==='encuestas' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-600']">Gestor de Encuestas</button>
         <button @click="tab='preguntas'" :class="['px-6 py-3 font-medium border-b-2', tab==='preguntas' ? 'border-green-600 text-green-600' : 'border-transparent text-gray-600']">Creador de Preguntas</button>
+        <button @click="tab='dimensiones'" :class="['px-6 py-3 font-medium border-b-2', tab==='dimensiones' ? 'border-orange-600 text-orange-600' : 'border-transparent text-gray-600']">Dimensiones</button>
         <button @click="tab='asignaciones'" :class="['px-6 py-3 font-medium border-b-2', tab==='asignaciones' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-600']">Asignar Encuestas</button>
       </div>
 
@@ -496,6 +610,128 @@ onMounted(()=>{ /* no-op */ })
                 <Button @click="guardarYPublicar" class="bg-green-600 hover:bg-green-700">
                   Guardar y Publicar Cambios
                 </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <!-- TAB 2.5: Dimensiones -->
+      <div v-if="tab==='dimensiones'" class="space-y-6">
+        <div class="flex items-end gap-4">
+          <div class="flex-1">
+            <Label>Encuesta</Label>
+            <select v-model.number="encuestaDimensionesSeleccionadaId" @change="cargarDimensiones" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+              <option :value="null">Seleccione…</option>
+              <option v-for="e in props.encuestas" :key="e.id" :value="e.id">{{ e.nombre }}</option>
+            </select>
+          </div>
+        </div>
+        <Card>
+          <CardHeader class="flex flex-row items-center justify-between">
+            <CardTitle>Dimensiones</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div v-if="!encuestaDimensionesSeleccionadaId" class="text-muted-foreground">Seleccione una encuesta para gestionar dimensiones.</div>
+            <div v-else>
+              <div v-if="cargandoDimensiones">Cargando…</div>
+              <div v-else class="space-y-4">
+                <!-- Form crear / editar -->
+                <div class="border rounded-md p-4 space-y-3 bg-muted/30">
+                  <div class="grid grid-cols-12 gap-3 items-end">
+                    <div class="col-span-4">
+                      <Label>Nombre *</Label>
+                      <Input v-model="formDimension.nombre" required />
+                    </div>
+                    <div class="col-span-5">
+                      <Label>Descripción</Label>
+                      <Input v-model="formDimension.descripcion" />
+                    </div>
+                    <div class="col-span-2">
+                      <Label>Orden</Label>
+                      <Input type="number" min="0" v-model.number="formDimension.orden" />
+                    </div>
+                    <div class="col-span-1 text-right">
+                      <Button size="sm" :disabled="formDimension.processing" @click="editandoDimensionId ? actualizarDimension() : crearDimension()">
+                        {{ formDimension.processing ? '...' : (editandoDimensionId ? 'Actualizar' : 'Crear') }}
+                      </Button>
+                      <Button v-if="editandoDimensionId" size="sm" variant="outline" class="mt-2" @click="cancelarEdicionDimension">Cancelar</Button>
+                    </div>
+                  </div>
+                </div>
+                <!-- Listado -->
+                <div v-if="dimensiones.length===0" class="text-sm text-muted-foreground">Sin dimensiones todavía.</div>
+                <div v-else class="space-y-3">
+                  <div v-for="d in dimensiones" :key="d.id" class="border rounded-md p-3 flex items-center gap-4">
+                    <div class="flex-1">
+                      <div class="font-medium">{{ d.nombre }} <span class="text-xs text-muted-foreground">(#{{ d.id }})</span></div>
+                      <div class="text-xs text-muted-foreground">{{ d.descripcion || 'Sin descripción' }}</div>
+                    </div>
+                    <div class="w-24 text-sm text-muted-foreground">Orden: {{ d.orden }}</div>
+                    <div class="w-32 text-sm text-muted-foreground">Preguntas: {{ d.preguntas_count ?? 0 }}</div>
+                    <div class="flex gap-2">
+                      <Button size="sm" variant="outline" @click="iniciarEdicionDimension(d)">Editar</Button>
+                      <Button size="sm" variant="outline" @click="() => { selectedDimensionId = d.id; cargarPreguntasDimension() }">Ver Preguntas</Button>
+                      <div class="flex items-center gap-2">
+                        <select v-model="reassignTarget" class="flex h-8 rounded-md border border-input bg-transparent px-2 py-0 text-xs">
+                          <option :value="null">Sin reasignar (null)</option>
+                          <option value="null">Quitar dimensión</option>
+                          <option v-for="t in dimensiones.filter(x=>x.id!==d.id)" :key="t.id" :value="t.id">-> {{ t.nombre }}</option>
+                        </select>
+                        <Button size="sm" variant="destructive" @click="() => { if(confirm('¿Eliminar dimensión?')) eliminarDimension(d.id) }">Eliminar</Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex justify-end mt-4">
+                  <Button variant="outline" @click="cargarDimensiones">Recargar</Button>
+                </div>
+                <!-- Preguntas de la dimensión seleccionada -->
+                <div v-if="selectedDimensionId" class="mt-8 border-t pt-6 space-y-4">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-semibold">Preguntas de la dimensión #{{ selectedDimensionId }}</h3>
+                    <div class="flex gap-2 items-center">
+                      <Input v-model="formPreguntaDim.texto" placeholder="Texto de la pregunta" class="w-72" />
+                      <select v-model="formPreguntaDim.tipo" class="flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                        <option v-for="t in tiposDim" :key="t" :value="t">{{ t }}</option>
+                      </select>
+                      <Input v-model.number="formPreguntaDim.orden" type="number" min="0" class="w-20" />
+                      <Button size="sm" :disabled="formPreguntaDim.processing" @click="crearPreguntaEnDimension">Añadir</Button>
+                      <Button size="sm" variant="outline" @click="() => { selectedDimensionId = null }">Cerrar</Button>
+                    </div>
+                  </div>
+                  <div v-if="cargandoPreguntasDim">Cargando preguntas…</div>
+                  <div v-else>
+                    <div v-if="preguntasFiltradas.length===0" class="text-sm text-muted-foreground">Sin preguntas en esta dimensión.</div>
+                    <div v-else class="space-y-3">
+                      <div v-for="p in preguntasFiltradas" :key="p.id" class="border rounded-md p-3 space-y-2">
+                        <div class="grid grid-cols-12 gap-3 items-center">
+                          <div class="col-span-6">
+                            <Label>Texto</Label>
+                            <Input v-model="p.texto" @change="() => actualizarPreguntaDim(p)" />
+                          </div>
+                          <div class="col-span-3">
+                            <Label>Tipo</Label>
+                            <select :value="p.tipo?.descripcion || 'Abierta'" @change="(e: Event) => { p.tipo = { id:0, descripcion:(e.target as HTMLSelectElement).value }; actualizarPreguntaDim(p) }" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                              <option v-for="t in tiposDim" :key="t" :value="t">{{ t }}</option>
+                            </select>
+                          </div>
+                          <div class="col-span-2">
+                            <Label>Orden</Label>
+                            <Input type="number" v-model.number="p.orden" @change="() => actualizarPreguntaDim(p)" />
+                          </div>
+                          <div class="col-span-1 text-right">
+                            <Button size="sm" variant="destructive" @click="eliminarPreguntaDim(p.id)">Eliminar</Button>
+                          </div>
+                        </div>
+                        <!-- Opciones si el tipo lo requiere -->
+                        <div v-if="['Opción Múltiple','Casillas de Verificación','Escala Likert'].includes(p.tipo?.descripcion || '')" class="mt-2 border-t pt-3">
+                          <div class="font-medium mb-2">(Gestionar opciones desde pestaña Preguntas)</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>

@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('ip', 45)->nullable();
             $table->text('navegador')->nullable();
             $table->dateTime('creado_en')->nullable()->useCurrent();
+
+            $table->foreign(['usuario_id'], 'bitacora_usuario_id_fk')->references(['id'])->on('users')->onUpdate('restrict')->onDelete('restrict');
         });
     }
 

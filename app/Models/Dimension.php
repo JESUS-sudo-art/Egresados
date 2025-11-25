@@ -5,10 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class UsuarioUnidad extends Model
+class Dimension extends Model
 {
     use SoftDeletes;
-    protected $table = 'usuario_unidad';
+    protected $table = 'dimension';
 
     const CREATED_AT = 'creado_en';
     const UPDATED_AT = 'actualizado_en';
@@ -16,18 +16,19 @@ class UsuarioUnidad extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'usuario_id',
-        'unidad_id',
-        'estatus',
+        'nombre',
+        'descripcion',
+        'orden',
+        'encuesta_id',
     ];
 
-    public function usuario()
+    public function encuesta()
     {
-        return $this->belongsTo(User::class, 'usuario_id');
+        return $this->belongsTo(Encuesta::class, 'encuesta_id');
     }
 
-    public function unidad()
+    public function preguntas()
     {
-        return $this->belongsTo(Unidad::class, 'unidad_id');
+        return $this->hasMany(Pregunta::class, 'dimension_id');
     }
 }

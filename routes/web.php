@@ -37,16 +37,16 @@ Route::get('admin-unidad/backup', [App\Http\Controllers\BackupController::class,
     ->name('admin-unidad.backup')
     ->middleware(['auth', 'verified', 'role:Administrador de unidad,Administrador academico,Administrador general']);
 
-// Rutas para contestar encuestas - Estudiantes y Egresados
+// Rutas para contestar encuestas - permitir también Administrador general
 Route::get('encuesta/{encuestaId}', [App\Http\Controllers\EncuestaController::class, 'show'])
     ->name('encuesta.show')
-    ->middleware(['auth', 'verified', 'role:Estudiantes,Egresados']);
+    ->middleware(['auth', 'verified', 'role:Administrador general,Estudiantes']);
 Route::post('encuesta/{encuestaId}/responder', [App\Http\Controllers\EncuestaController::class, 'store'])
     ->name('encuesta.responder')
-    ->middleware(['auth', 'verified', 'role:Estudiantes,Egresados']);
+    ->middleware(['auth', 'verified', 'role:Administrador general,Estudiantes']);
 Route::get('encuesta/{encuestaId}/mis-respuestas', [App\Http\Controllers\EncuestaController::class, 'misRespuestas'])
     ->name('encuesta.respuestas')
-    ->middleware(['auth', 'verified', 'role:Estudiantes,Egresados']);
+    ->middleware(['auth', 'verified', 'role:Administrador general,Estudiantes']);
 
 // Ruta de Admin Académica con controlador - Admin Académico y Admin General
 $adminAcademicaRoute = Route::get('admin-academica', [App\Http\Controllers\AdminAcademicaController::class, 'index'])
@@ -144,6 +144,12 @@ Route::post('admin-unidad/preguntas/{preguntaId}/opciones', [App\Http\Controller
 Route::put('admin-unidad/opciones/{id}', [App\Http\Controllers\AdminUnidadController::class, 'updateOpcion'])->name('admin-unidad.opciones.update');
 Route::delete('admin-unidad/opciones/{id}', [App\Http\Controllers\AdminUnidadController::class, 'destroyOpcion'])->name('admin-unidad.opciones.destroy');
 
+// Rutas API para Admin Unidad - Dimensiones
+Route::get('admin-unidad/encuestas/{encuestaId}/dimensiones', [App\Http\Controllers\DimensionController::class, 'index'])->name('admin-unidad.dimensiones.index');
+Route::post('admin-unidad/encuestas/{encuestaId}/dimensiones', [App\Http\Controllers\DimensionController::class, 'store'])->name('admin-unidad.dimensiones.store');
+Route::put('admin-unidad/dimensiones/{id}', [App\Http\Controllers\DimensionController::class, 'update'])->name('admin-unidad.dimensiones.update');
+Route::delete('admin-unidad/dimensiones/{id}', [App\Http\Controllers\DimensionController::class, 'destroy'])->name('admin-unidad.dimensiones.destroy');
+
 // Rutas API para Admin Unidad - Asignaciones
 Route::post('admin-unidad/asignaciones', [App\Http\Controllers\AdminUnidadController::class, 'storeAsignacion'])->name('admin-unidad.asignaciones.store');
 Route::delete('admin-unidad/asignaciones/{id}', [App\Http\Controllers\AdminUnidadController::class, 'destroyAsignacion'])->name('admin-unidad.asignaciones.destroy');
@@ -168,3 +174,15 @@ Route::middleware(['auth', 'verified', 'role:Administrador general'])->group(fun
 });
 
 require __DIR__.'/settings.php';
+
+// Invitaciones Admin: solo Admin General
+Route::middleware(['auth','verified','role:Administrador general'])->group(function(){
+    Route::get('admin/invitations', [App\Http\Controllers\AdminInvitationController::class, 'index'])->name('admin.invitations.index');
+    Route::post('admin/invitations', [App\Http\Controllers\AdminInvitationController::class, 'store'])->name('admin.invitations.store');
+    Route::post('admin/invitations/{invitation}/resend', [App\Http\Controllers\AdminInvitationController::class, 'resend'])->name('admin.invitations.resend');
+    Route::delete('admin/invitations/{invitation}', [App\Http\Controllers\AdminInvitationController::class, 'destroy'])->name('admin.invitations.destroy');
+});
+
+// Aceptar invitación pública (token)
+Route::get('invitation/accept/{token}', [App\Http\Controllers\AcceptInvitationController::class, 'show'])->name('invitation.accept.show');
+Route::post('invitation/accept/{token}', [App\Http\Controllers\AcceptInvitationController::class, 'store'])->name('invitation.accept.store');

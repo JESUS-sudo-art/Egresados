@@ -27,10 +27,9 @@ class CatalogosSeeder extends Seeder
 
         // Catálogo de Estatus
         DB::table('cat_estatus')->insert([
-            ['id' => 1, 'nombre' => 'Activo'],
-            ['id' => 2, 'nombre' => 'Inactivo'],
-            ['id' => 3, 'nombre' => 'Egresado'],
-            ['id' => 4, 'nombre' => 'Baja'],
+            ['id' => 1, 'nombre' => 'Preegresado'],
+            ['id' => 2, 'nombre' => 'Egresado'],
+            
         ]);
 
         // Carrera de ejemplo

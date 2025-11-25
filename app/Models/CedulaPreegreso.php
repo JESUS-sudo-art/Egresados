@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CedulaPreegreso extends Model
 {
+    use SoftDeletes;
     protected $table = 'cedula_preegreso';
     
     const CREATED_AT = 'creado_en';

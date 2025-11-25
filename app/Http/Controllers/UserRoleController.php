@@ -28,7 +28,12 @@ class UserRoleController extends Controller
             ];
         });
 
-        $roles = Role::all()->map(function ($role) {
+        // Solo mostrar roles administrativos
+        $roles = Role::whereIn('name', [
+            'Administrador general',
+            'Administrador de unidad',
+            'Administrador academico'
+        ])->get()->map(function ($role) {
             return [
                 'id' => $role->id,
                 'name' => $role->name,
