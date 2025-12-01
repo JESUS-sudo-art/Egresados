@@ -10,23 +10,32 @@ use Inertia\Inertia;
 
 class CedulaPreegresoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // TODO: En producción, obtener el egresado autenticado
-        $egresado = Egresado::with(['estadoCivil'])->where('email', auth()->user()->email)->first();
+        $user = auth()->user();
+        $isAdmin = $user && ($user->hasRole('Administrador general') || $user->hasRole('Administrador de unidad') || $user->hasRole('Administrador academico'));
+        $isEgresado = $user && $user->hasRole('Egresados');
+        
+        // Si es admin y viene de un perfil específico, cargar ese egresado
+        $egresadoId = $request->query('egresado_id');
+        if ($isAdmin && $egresadoId) {
+            $egresado = Egresado::with(['estadoCivil'])->find($egresadoId);
+        } else {
+            // Cargar egresado del usuario autenticado
+            $egresado = Egresado::with(['estadoCivil'])->where('email', $user->email)->first();
+        }
+        
         $estadosCiviles = CatEstadoCivil::all();
         
         $cedulaExistente = null;
         if ($egresado) {
             $cedulaExistente = CedulaPreegreso::where('egresado_id', $egresado->id)->first();
         }
-
-        // Verificar si el usuario autenticado tiene el rol de "Egresados"
-        $user = auth()->user();
-        $isEgresado = $user && $user->hasRole('Egresados');
         
-        // Los egresados solo pueden ver sus respuestas si ya contestaron como estudiantes
-        $soloLectura = $isEgresado && $cedulaExistente !== null;
+        // Solo modo lectura si:
+        // 1. Es admin viendo la encuesta de otro usuario (viene con egresado_id)
+        // 2. Es egresado Y ya tiene cédula contestada
+        $soloLectura = ($isAdmin && $egresadoId) || ($isEgresado && $cedulaExistente !== null);
 
         return Inertia::render('modules/EncuestaPreegreso', [
             'egresado' => $egresado,

@@ -64,7 +64,7 @@ class AcusesSeguimientoController extends Controller
     
     public function descargarAcuse($tipo, $id)
     {
-        $egresado = Egresado::with(['carreras.carrera.unidades'])
+        $egresado = Egresado::with(['carrera.unidades', 'carreras.carrera.unidades'])
             ->where('email', auth()->user()->email)
             ->first();
         
@@ -101,10 +101,22 @@ class AcusesSeguimientoController extends Controller
             return redirect()->back()->withErrors(['error' => 'No se encontró la encuesta']);
         }
         
-        $egresadoCarrera = $egresado->carreras->first();
-        $carrera = $egresadoCarrera?->carrera;
-        $unidad = $carrera?->unidades->first();
-        $anioEgreso = $egresadoCarrera?->fecha_egreso ? $egresadoCarrera->fecha_egreso->format('Y') : 'N/A';
+        // Obtener carrera y unidad
+        // Priorizar carrera directa (carrera_id), luego carrera de la tabla pivot
+        $carrera = null;
+        $unidad = null;
+        
+        if ($egresado->carrera_id && $egresado->carrera) {
+            $carrera = $egresado->carrera;
+            $unidad = $carrera->unidades->first();
+        } elseif ($egresado->carreras->count() > 0) {
+            $egresadoCarrera = $egresado->carreras->first();
+            $carrera = $egresadoCarrera->carrera;
+            $unidad = $carrera->unidades->first();
+        }
+        
+        // Usar anio_egreso del egresado directamente
+        $anioEgreso = $egresado->anio_egreso ?? 'N/A';
         
         $data = [
             'folio' => $folio,

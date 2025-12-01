@@ -18,6 +18,7 @@ class Egresado extends Model
         'genero_id',
         'fecha_nacimiento',
         'lugar_nacimiento',
+        'estado_origen',
         'domicilio',
         'domicilio_actual',
         'email',
@@ -31,6 +32,9 @@ class Egresado extends Model
         'validado_sice',
         'token',
         'estatus_id',
+        'unidad_id',
+        'carrera_id',
+        'anio_egreso',
     ];
 
     protected $casts = [
@@ -56,6 +60,16 @@ class Egresado extends Model
         return $this->belongsTo(CatEstatus::class, 'estatus_id');
     }
 
+    public function unidad()
+    {
+        return $this->belongsTo(Unidad::class, 'unidad_id');
+    }
+
+    public function carrera()
+    {
+        return $this->belongsTo(Carrera::class, 'carrera_id');
+    }
+
     public function carreras()
     {
         return $this->hasMany(EgresadoCarrera::class, 'egresado_id');
@@ -69,5 +83,10 @@ class Egresado extends Model
     public function user()
     {
         return $this->hasOne(User::class, 'email', 'email');
+    }
+
+    public function respuestas()
+    {
+        return $this->hasMany(Respuesta::class, 'egresado_id');
     }
 }

@@ -25,19 +25,24 @@ const roles = computed(() => (page.props as any)?.auth?.roles ?? []);
 const isAdminGeneral = computed(() => roles.value?.includes('Administrador general'));
 const isAdminUnidad = computed(() => roles.value?.includes('Administrador de unidad'));
 const isAdminAcademico = computed(() => roles.value?.includes('Administrador academico'));
+const isAdmin = computed(() => isAdminGeneral.value || isAdminUnidad.value || isAdminAcademico.value);
 const isEgresado = computed(() => roles.value?.includes('Egresados'));
 const isEstudiante = computed(() => roles.value?.includes('Estudiantes'));
 
 // Navegación principal (incluye únicamente los accesos solicitados adicionalmente)
 const mainNavItems = computed<NavItem[]>(() => {
-    const items: NavItem[] = [
-        { title: 'Panel', href: dashboard().url, icon: LayoutGrid },
-        { title: 'Perfil y datos', href: '/perfil-datos', icon: User },
-    ];
+    const items: NavItem[] = [];
+    // Ocultar Panel y Perfil para todos los administradores
+    if (!isAdmin.value) {
+        items.push({ title: 'Panel', href: dashboard().url, icon: LayoutGrid });
+        items.push({ title: 'Perfil y datos', href: '/perfil-datos', icon: User });
+    }
     
     // Encuestas solo para Egresados y Estudiantes (NO para Admin General)
-    if (isEgresado.value || isEstudiante.value) {
+    if (isEstudiante.value || isEgresado.value) {
         items.push({ title: 'Encuesta Pre-Egreso', href: '/encuesta-preegreso', icon: BookOpen });
+    }
+    if (isEgresado.value) {
         items.push({ title: 'Encuesta de Egreso', href: '/encuesta-egreso', icon: BookOpen });
     }
     if (isEgresado.value) {
@@ -48,16 +53,17 @@ const mainNavItems = computed<NavItem[]>(() => {
     }
     
     if (isAdminGeneral.value) {
-        items.push({ title: 'Admin general', href: '/admin-general', icon: Users });
+        items.push({ title: 'Gestor de Usuarios', href: '/admin-general', icon: Users });
     }
     if (isAdminAcademico.value || isAdminGeneral.value) {
-        items.push({ title: 'Admin académica', href: '/admin-academica', icon: Users });
+        items.push({ title: 'Gestión Académica', href: '/admin-academica', icon: Users });
     }
     if (isAdminUnidad.value || isAdminGeneral.value) {
-        items.push({ title: 'Admin unidad', href: '/admin-unidad', icon: Users });
+        items.push({ title: 'Encuestas', href: '/admin-unidad', icon: Users });
     }
     if (isAdminGeneral.value) {
         items.push({ title: 'Gestor de permisos', href: '/permisos', icon: Shield });
+        items.push({ title: 'Roles', href: '/roles', icon: Settings });
         items.push({ title: 'Asignar roles', href: '/usuarios/roles', icon: Settings });
         items.push({ title: 'Invitaciones', href: '/admin/invitations', icon: Settings });
         items.push({ title: 'Catálogo egresados', href: '/catalogo-egresados', icon: Users });

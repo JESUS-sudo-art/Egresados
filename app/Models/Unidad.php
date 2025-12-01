@@ -25,4 +25,11 @@ class Unidad extends Model
             ->withPivot('estatus')
             ->withTimestamps();
     }
+
+    public function carreras()
+    {
+        return $this->belongsToMany(Carrera::class, 'unidad_carrera', 'unidad_id', 'carrera_id')
+            ->withPivot('estatus')
+            ->withTimestamps();
+    }
 }

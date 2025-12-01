@@ -16,6 +16,13 @@ class EncuestaController extends Controller
     {
         $user = Auth::user();
         
+        // Buscar el egresado asociado al usuario
+        $egresado = \App\Models\Egresado::where('email', $user->email)->first();
+        
+        if (!$egresado) {
+            return redirect()->route('dashboard')->with('error', 'No se encontró tu perfil de egresado');
+        }
+        
         $encuesta = Encuesta::with([
             'dimensiones' => function($q) { $q->orderBy('orden'); },
             'preguntas' => function($query) {
@@ -28,12 +35,13 @@ class EncuestaController extends Controller
             return redirect()->route('dashboard')->with('error', 'Esta encuesta no está disponible');
         }
 
-        // Verificar si el usuario ya respondió esta encuesta
+        // Verificar si el egresado ya respondió esta encuesta
         $yaRespondio = Respuesta::where('encuesta_id', $encuestaId)
-            ->where('egresado_id', $user->id)
+            ->where('egresado_id', $egresado->id)
             ->exists();
 
         if ($yaRespondio) {
+            // Redirigir directamente a ver sus respuestas
             return redirect()->route('encuesta.respuestas', $encuestaId)
                 ->with('info', 'Ya has respondido esta encuesta. Aquí están tus respuestas.');
         }
@@ -117,17 +125,26 @@ class EncuestaController extends Controller
         ]);
 
         $user = Auth::user();
+        
+        // Buscar el egresado asociado al usuario
+        $egresado = \App\Models\Egresado::where('email', $user->email)->first();
+        
+        if (!$egresado) {
+            return redirect()->route('dashboard')
+                ->with('error', 'No se encontró tu perfil de egresado.');
+        }
 
         // Log para debug
         \Log::info('Respuestas de encuesta recibidas', [
             'user_id' => $user->id,
+            'egresado_id' => $egresado->id,
             'encuesta_id' => $encuestaId,
             'respuestas' => $validated['respuestas']
         ]);
 
         // Verificar que no haya respondido ya
         $yaRespondio = Respuesta::where('encuesta_id', $encuestaId)
-            ->where('egresado_id', $user->id)
+            ->where('egresado_id', $egresado->id)
             ->exists();
 
         if ($yaRespondio) {
@@ -145,7 +162,7 @@ class EncuestaController extends Controller
                 if (isset($respuesta['opciones_seleccionadas']) && is_array($respuesta['opciones_seleccionadas']) && !empty($respuesta['opciones_seleccionadas'])) {
                     foreach ($respuesta['opciones_seleccionadas'] as $opcionId) {
                         Respuesta::create([
-                            'egresado_id' => $user->id,
+                            'egresado_id' => $egresado->id,
                             'encuesta_id' => $encuestaId,
                             'pregunta_id' => $preguntaId,
                             'opcion_id' => $opcionId,
@@ -157,7 +174,7 @@ class EncuestaController extends Controller
                 // Si es respuesta numérica
                 elseif (isset($respuesta['respuesta']) && is_numeric($respuesta['respuesta']) && $respuesta['respuesta'] !== null && $respuesta['respuesta'] !== '') {
                     Respuesta::create([
-                        'egresado_id' => $user->id,
+                        'egresado_id' => $egresado->id,
                         'encuesta_id' => $encuestaId,
                         'pregunta_id' => $preguntaId,
                         'opcion_id' => null,
@@ -168,7 +185,7 @@ class EncuestaController extends Controller
                 // Si es respuesta de texto abierto
                 elseif (isset($respuesta['respuesta']) && $respuesta['respuesta'] !== null && $respuesta['respuesta'] !== '') {
                     Respuesta::create([
-                        'egresado_id' => $user->id,
+                        'egresado_id' => $egresado->id,
                         'encuesta_id' => $encuestaId,
                         'pregunta_id' => $preguntaId,
                         'opcion_id' => null,
@@ -189,6 +206,7 @@ class EncuestaController extends Controller
             \Log::error('Error guardando respuestas de encuesta', [
                 'error' => $e->getMessage(),
                 'user_id' => $user->id,
+                'egresado_id' => $egresado->id,
                 'encuesta_id' => $encuestaId,
             ]);
             
@@ -201,6 +219,13 @@ class EncuestaController extends Controller
     {
         $user = Auth::user();
         
+        // Buscar el egresado asociado al usuario
+        $egresado = \App\Models\Egresado::where('email', $user->email)->first();
+        
+        if (!$egresado) {
+            return redirect()->route('dashboard')->with('error', 'No se encontró tu perfil de egresado');
+        }
+        
         $encuesta = Encuesta::with([
             'dimensiones' => function($q) { $q->orderBy('orden'); },
             'preguntas' => function($query) {
@@ -208,10 +233,10 @@ class EncuestaController extends Controller
             }
         ])->findOrFail($encuestaId);
 
-        // Obtener las respuestas del usuario para esta encuesta
+        // Obtener las respuestas del egresado para esta encuesta
         $respuestas = Respuesta::with(['pregunta', 'opcion'])
             ->where('encuesta_id', $encuestaId)
-            ->where('egresado_id', $user->id)
+            ->where('egresado_id', $egresado->id)
             ->get();
 
         // Organizar respuestas por pregunta
@@ -283,6 +308,102 @@ class EncuestaController extends Controller
                 'preguntas' => $sinDimension,
             ]);
         }
+        return Inertia::render('modules/VerRespuestas', [
+            'encuesta' => [
+                'id' => $encuesta->id,
+                'nombre' => $encuesta->nombre,
+                'descripcion' => $encuesta->descripcion,
+                'dimensiones' => $dimensiones,
+            ],
+        ]);
+    }
+
+    // Ver respuestas de un egresado específico (uso administrativo)
+    public function respuestasDeEgresado($encuestaId, $egresadoId)
+    {
+        $encuesta = Encuesta::with([
+            'dimensiones' => function($q) { $q->orderBy('orden'); },
+            'preguntas' => function($query) {
+                $query->with(['opciones', 'tipo', 'dimension'])->orderBy('orden');
+            }
+        ])->findOrFail($encuestaId);
+
+        // Obtener las respuestas del egresado indicado
+        $respuestas = Respuesta::with(['pregunta', 'opcion'])
+            ->where('encuesta_id', $encuestaId)
+            ->where('egresado_id', $egresadoId)
+            ->get();
+
+        $respuestasPorPregunta = $respuestas->groupBy('pregunta_id');
+
+        $dimensiones = $encuesta->dimensiones->map(function($dimension) use ($encuesta, $respuestasPorPregunta) {
+            $preguntasDimension = $encuesta->preguntas->where('dimension_id', $dimension->id)->map(function($pregunta) use ($respuestasPorPregunta) {
+                $respuestasPregunta = $respuestasPorPregunta->get($pregunta->id, collect());
+                return [
+                    'id' => $pregunta->id,
+                    'texto' => $pregunta->texto,
+                    'tipo' => $pregunta->tipo->descripcion,
+                    'orden' => $pregunta->orden,
+                    'opciones' => $pregunta->opciones->map(function($opcion) {
+                        return [
+                            'id' => $opcion->id,
+                            'texto' => $opcion->texto,
+                            'valor' => $opcion->valor,
+                        ];
+                    }),
+                    'respuestas' => $respuestasPregunta->map(function($resp) {
+                        return [
+                            'opcion_id' => $resp->opcion_id,
+                            'opcion_texto' => $resp->opcion ? $resp->opcion->texto : null,
+                            'respuesta_texto' => $resp->respuesta_texto,
+                            'respuesta_entero' => $resp->respuesta_entero,
+                        ];
+                    })->values()->all(),
+                ];
+            })->values();
+            return [
+                'id' => $dimension->id,
+                'nombre' => $dimension->nombre,
+                'descripcion' => $dimension->descripcion,
+                'orden' => $dimension->orden,
+                'preguntas' => $preguntasDimension,
+            ];
+        })->values();
+
+        $sinDimension = $encuesta->preguntas->whereNull('dimension_id')->map(function($pregunta) use ($respuestasPorPregunta) {
+            $respuestasPregunta = $respuestasPorPregunta->get($pregunta->id, collect());
+            return [
+                'id' => $pregunta->id,
+                'texto' => $pregunta->texto,
+                'tipo' => $pregunta->tipo->descripcion,
+                'orden' => $pregunta->orden,
+                'opciones' => $pregunta->opciones->map(function($opcion) {
+                    return [
+                        'id' => $opcion->id,
+                        'texto' => $opcion->texto,
+                        'valor' => $opcion->valor,
+                    ];
+                }),
+                'respuestas' => $respuestasPregunta->map(function($resp) {
+                    return [
+                        'opcion_id' => $resp->opcion_id,
+                        'opcion_texto' => $resp->opcion ? $resp->opcion->texto : null,
+                        'respuesta_texto' => $resp->respuesta_texto,
+                        'respuesta_entero' => $resp->respuesta_entero,
+                    ];
+                })->values()->all(),
+            ];
+        })->values();
+        if ($sinDimension->count() > 0) {
+            $dimensiones->push([
+                'id' => null,
+                'nombre' => 'Otras Preguntas',
+                'descripcion' => null,
+                'orden' => 9999,
+                'preguntas' => $sinDimension,
+            ]);
+        }
+
         return Inertia::render('modules/VerRespuestas', [
             'encuesta' => [
                 'id' => $encuesta->id,

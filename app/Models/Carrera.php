@@ -14,9 +14,17 @@ class Carrera extends Model
         'nombre',
         'nivel',
         'tipo_programa',
+        'unidad_id',
         'estatus',
     ];
 
+    // Relación directa con una unidad (nueva)
+    public function unidad()
+    {
+        return $this->belongsTo(Unidad::class, 'unidad_id');
+    }
+
+    // Relación many-to-many con unidades (legacy, mantener por compatibilidad)
     public function unidades()
     {
         return $this->belongsToMany(Unidad::class, 'unidad_carrera', 'carrera_id', 'unidad_id');

@@ -10,10 +10,20 @@ use Inertia\Inertia;
 
 class EncuestaLaboralController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // TODO: En producción, obtener el egresado autenticado
-        $egresado = Egresado::with(['estadoCivil', 'carreras.carrera'])->where('email', auth()->user()->email)->first();
+        $user = auth()->user();
+        $isAdmin = $user && ($user->hasRole('Administrador general') || $user->hasRole('Administrador de unidad') || $user->hasRole('Administrador academico'));
+        
+        // Si es admin y viene de un perfil específico, cargar ese egresado
+        $egresadoId = $request->query('egresado_id');
+        if ($isAdmin && $egresadoId) {
+            $egresado = Egresado::with(['estadoCivil', 'carreras.carrera'])->find($egresadoId);
+        } else {
+            // Cargar egresado del usuario autenticado
+            $egresado = Egresado::with(['estadoCivil', 'carreras.carrera'])->where('email', $user->email)->first();
+        }
+        
         $estadosCiviles = CatEstadoCivil::all();
         
         $encuestaExistente = null;
@@ -22,11 +32,15 @@ class EncuestaLaboralController extends Controller
                 ->orderBy('fecha_aplicacion', 'desc')
                 ->first();
         }
+        
+        // Solo lectura si es admin viendo otro egresado o si ya contestó
+        $soloLectura = ($isAdmin && $egresadoId) || ($encuestaExistente !== null);
 
         return Inertia::render('modules/EncuestaLaboral', [
             'egresado' => $egresado,
             'estadosCiviles' => $estadosCiviles,
             'encuestaExistente' => $encuestaExistente,
+            'soloLectura' => $soloLectura,
         ]);
     }
 

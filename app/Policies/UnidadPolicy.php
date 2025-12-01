@@ -15,7 +15,7 @@ class UnidadPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('ver');
+        return $user->hasPermissionTo('unidades.ver') || $user->hasAnyRole(['Administrador general', 'Administrador academico']);
     }
 
     /**
@@ -23,7 +23,7 @@ class UnidadPolicy
      */
     public function view(User $user, Unidad $unidad): bool
     {
-        return $user->hasPermissionTo('ver_uno');
+        return $user->hasPermissionTo('unidades.ver') || $user->hasAnyRole(['Administrador general', 'Administrador academico']);
     }
 
     /**
@@ -31,7 +31,7 @@ class UnidadPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('crear');
+        return $user->hasPermissionTo('unidades.crear');
     }
 
     /**
@@ -39,7 +39,7 @@ class UnidadPolicy
      */
     public function update(User $user, Unidad $unidad): bool
     {
-        return $user->hasPermissionTo('actualizar');
+        return $user->hasPermissionTo('unidades.editar');
     }
 
     /**
@@ -47,7 +47,7 @@ class UnidadPolicy
      */
     public function delete(User $user, Unidad $unidad): bool
     {
-        return $user->hasPermissionTo('eliminar');
+        return $user->hasPermissionTo('unidades.eliminar');
     }
 
     /**
@@ -55,7 +55,7 @@ class UnidadPolicy
      */
     public function restore(User $user, Unidad $unidad): bool
     {
-        return $user->hasPermissionTo('restaurar');
+        return $user->hasRole('Administrador general');
     }
 
     /**
@@ -63,6 +63,6 @@ class UnidadPolicy
      */
     public function forceDelete(User $user, Unidad $unidad): bool
     {
-        return $user->hasPermissionTo('forzar_eliminacion');
+        return $user->hasRole('Administrador general');
     }
 }

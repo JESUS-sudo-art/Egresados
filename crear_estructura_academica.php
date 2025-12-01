@@ -19,10 +19,13 @@ echo "✓ Unidad: {$unidad->nombre} (ID: {$unidad->id})" . PHP_EOL;
 
 // 2. Crear Carreras
 $carreras = [
-    'Ingeniería en Sistemas Computacionales',
-    'Ingeniería Industrial',
-    'Ingeniería Electrónica',
-    'Licenciatura en Administración',
+    'Medicina y Cirugia',
+    'Enfermeria y Obstetricia',
+    'Economia',
+    'Contaduria y Administracion',
+    'Ciencias Quimicas',
+    'Idiomas',
+    'Arquitectura 5 de Mayo',
 ];
 
 $carrerasCreadas = [];
@@ -78,7 +81,7 @@ echo PHP_EOL;
 // 4. Asignar carrera al egresado Armando
 $egresado = App\Models\Egresado::where('email', 'armando345@gmail.com')->first();
 if ($egresado) {
-    $carreraPrincipal = $carrerasCreadas[0]; // Sistemas Computacionales
+    $carreraPrincipal = $carrerasCreadas[0]; // Medicina y Cirugia
     $generacionActual = $generacionesCreadas[1]; // 2021-2025
     
     $existe = DB::table('egresado_carrera')

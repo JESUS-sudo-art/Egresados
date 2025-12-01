@@ -39,8 +39,8 @@ class FortifyServiceProvider extends ServiceProvider
                         if ($user->hasRole('Administrador academico')) {
                             return redirect()->intended(route('admin-academica'));
                         }
-                        if ($user->hasRole('Egresados')) {
-                            return redirect()->intended(route('escritorio'));
+                        if ($user->hasRole('Egresados') || $user->hasRole('Estudiantes')) {
+                            return redirect()->intended(route('dashboard'));
                         }
                     }
 
@@ -109,7 +109,23 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::registerView(fn () => Inertia::render('auth/Register'));
+        Fortify::registerView(function () {
+            $unidades = \App\Models\Unidad::where('estatus', 'A')
+                ->with(['carreras' => function($query) {
+                    $query->where('carrera.estatus', 'A')->orderBy('nombre');
+                }])
+                ->orderBy('nombre')
+                ->get(['id', 'nombre']);
+            
+            $carreras = \App\Models\Carrera::where('estatus', 'A')
+                ->orderBy('nombre')
+                ->get(['id', 'nombre']);
+            
+            return Inertia::render('auth/Register', [
+                'unidades' => $unidades,
+                'carreras' => $carreras,
+            ]);
+        });
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/TwoFactorChallenge'));
 

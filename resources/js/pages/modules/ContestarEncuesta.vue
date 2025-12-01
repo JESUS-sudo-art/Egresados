@@ -84,9 +84,18 @@ const enviarEncuesta = () => {
   // Debug: Ver el estado actual de todas las respuestas
   console.log('Estado completo de respuestas antes de enviar:', JSON.parse(JSON.stringify(respuestas.value)))
   
+  // Buscar pregunta en las dimensiones
+  const findPregunta = (preguntaId: number) => {
+    for (const dimension of props.encuesta.dimensiones) {
+      const pregunta = dimension.preguntas.find(p => p.id === preguntaId)
+      if (pregunta) return pregunta
+    }
+    return null
+  }
+  
   // Convertir respuestas a formato para el backend
   const respuestasArray = Object.entries(respuestas.value).map(([preguntaId, respuesta]) => {
-    const pregunta = props.encuesta.preguntas.find(p => p.id === parseInt(preguntaId))
+    const pregunta = findPregunta(parseInt(preguntaId))
     
     console.log(`Procesando pregunta ${preguntaId} (${pregunta?.tipo}):`, respuesta)
     

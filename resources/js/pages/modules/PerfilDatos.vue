@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,8 @@ interface Egresado {
   curp: string | null;
   email: string;
   domicilio: string | null;
+  fecha_nacimiento: string | null;
+  estado_origen: string | null;
   genero_id: number | null;
   estado_civil_id: number | null;
   estatus_id: number | null;
@@ -56,6 +58,16 @@ const props = defineProps<{
   empleos: Empleo[];
 }>();
 
+const page = usePage();
+
+// Verificar el rol del usuario
+const userRoles = computed(() => ((page.props as any)?.auth?.roles ?? []) as string[]);
+const isEstudiante = computed(() => userRoles.value?.includes('Estudiantes'));
+const isEgresado = computed(() => userRoles.value?.includes('Egresados'));
+
+// Solo mostrar pestaña laboral para egresados, no para estudiantes
+const showLaboralTab = computed(() => isEgresado.value && !isEstudiante.value);
+
 const activeTab = ref('personales');
 
 // Formulario de Datos Personales
@@ -67,6 +79,8 @@ const formPersonales = useForm({
   curp: props.egresado?.curp || '',
   email: props.egresado?.email || '',
   domicilio: props.egresado?.domicilio || '',
+  fecha_nacimiento: props.egresado?.fecha_nacimiento || '',
+  estado_origen: props.egresado?.estado_origen || '',
   genero_id: props.egresado?.genero_id || null,
   estado_civil_id: props.egresado?.estado_civil_id || null,
   estatus_id: props.egresado?.estatus_id || null,
@@ -171,6 +185,7 @@ const carreraInfo = computed(() => {
             Datos Académicos
           </button>
           <button
+            v-if="showLaboralTab"
             @click="activeTab = 'laboral'"
             :class="[
               'px-6 py-3 font-medium transition-colors',
@@ -195,7 +210,12 @@ const carreraInfo = computed(() => {
                 </div>
                 <div>
                   <Label for="curp">CURP</Label>
-                  <Input id="curp" v-model="formPersonales.curp" maxlength="18" />
+                  <Input 
+                    id="curp" 
+                    v-model="formPersonales.curp" 
+                    maxlength="18"
+                    placeholder="Opcional"
+                  />
                 </div>
                 <div>
                   <Label for="nombre">Nombre(s)</Label>
@@ -240,17 +260,39 @@ const carreraInfo = computed(() => {
                   <select
                     id="estatus"
                     v-model="formPersonales.estatus_id"
-                    class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled
+                    class="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-base ring-offset-background disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option :value="null">Seleccionar estatus</option>
                     <option v-for="e in estatuses" :key="e.id" :value="e.id">
                       {{ e.nombre }}
                     </option>
                   </select>
+                  <p class="text-xs text-muted-foreground mt-1">Este campo se establece automáticamente según tu tipo de usuario</p>
                 </div>
                 <div class="md:col-span-2">
                   <Label for="domicilio">Domicilio</Label>
-                  <Input id="domicilio" v-model="formPersonales.domicilio" />
+                  <Input 
+                    id="domicilio" 
+                    v-model="formPersonales.domicilio" 
+                    placeholder="Opcional"
+                  />
+                </div>
+                <div>
+                  <Label for="fecha_nacimiento">Fecha de Nacimiento</Label>
+                  <Input 
+                    id="fecha_nacimiento" 
+                    type="date"
+                    v-model="formPersonales.fecha_nacimiento" 
+                  />
+                </div>
+                <div>
+                  <Label for="estado_origen">Estado de Origen</Label>
+                  <Input 
+                    id="estado_origen" 
+                    v-model="formPersonales.estado_origen" 
+                    placeholder="Ej. Oaxaca"
+                  />
                 </div>
               </div>
               <div class="flex justify-end">
@@ -266,26 +308,33 @@ const carreraInfo = computed(() => {
             <Card>
               <CardHeader>
                 <CardTitle>Información Académica</CardTitle>
-                <CardDescription>Datos de solo lectura sobre tu carrera</CardDescription>
+                <CardDescription>Datos registrados al crear tu cuenta</CardDescription>
               </CardHeader>
               <CardContent>
-                <div v-if="carreraInfo" class="space-y-4">
+                <div class="space-y-4">
                   <div>
-                    <Label class="text-muted-foreground">Carrera</Label>
-                    <p class="text-lg font-medium">{{ carreraInfo.carrera?.nombre || 'No disponible' }}</p>
+                    <Label class="text-muted-foreground">Unidad</Label>
+                    <p class="text-lg font-medium">{{ egresado?.unidad?.nombre || 'No disponible' }}</p>
                   </div>
                   <div>
+                    <Label class="text-muted-foreground">Carrera</Label>
+                    <p class="text-lg font-medium">{{ egresado?.carrera?.nombre || 'No disponible' }}</p>
+                  </div>
+                  <div v-if="egresado?.anio_egreso">
+                    <Label class="text-muted-foreground">Año de Egreso</Label>
+                    <p class="text-lg font-medium">{{ egresado.anio_egreso }}</p>
+                  </div>
+                  <div v-if="carreraInfo">
                     <Label class="text-muted-foreground">Generación</Label>
                     <p class="text-lg font-medium">{{ carreraInfo.generacion?.nombre || 'No disponible' }}</p>
                   </div>
                 </div>
-                <p v-else class="text-muted-foreground">No hay información académica registrada.</p>
               </CardContent>
             </Card>
           </div>
 
           <!-- Pestaña 3: Situación Laboral -->
-          <div v-if="activeTab === 'laboral'" class="space-y-6">
+          <div v-if="showLaboralTab && activeTab === 'laboral'" class="space-y-6">
             <!-- Formulario de Empleo -->
             <Card>
               <CardHeader>

@@ -35,6 +35,8 @@ interface Props {
   unidades: Unidad[]
   carreras: Carrera[]
   generaciones: Generacion[]
+  nivelesEstudio: NivelEstudio[]
+  ciclosEscolares: CicloEscolar[]
 }
 
 const props = defineProps<Props>()
@@ -46,10 +48,16 @@ const tabActiva = ref('unidades')
 const mostrarFormUnidad = ref(false)
 const mostrarFormCarrera = ref(false)
 const mostrarFormGeneracion = ref(false)
+const mostrarAsignarCarreras = ref(false)
+const mostrarFormNivel = ref(false)
+const mostrarFormCiclo = ref(false)
 
 const editandoUnidad = ref<Unidad | null>(null)
 const editandoCarrera = ref<Carrera | null>(null)
 const editandoGeneracion = ref<Generacion | null>(null)
+const unidadParaAsignar = ref<Unidad | null>(null)
+const editandoNivel = ref<NivelEstudio | null>(null)
+const editandoCiclo = ref<CicloEscolar | null>(null)
 
 // Formularios
 const formUnidad = useForm({
@@ -71,6 +79,22 @@ const formCarrera = useForm({
 const formGeneracion = useForm({
   nombre: '',
   estatus: 'A',
+})
+
+const formNivel = useForm({
+  nombre: '',
+  estatus: 'A',
+})
+
+const formCiclo = useForm({
+  nombre: '',
+  fecha_inicio: '',
+  fecha_fin: '',
+  estatus: 'A',
+})
+
+const formAsignarCarreras = useForm({
+  carreras_ids: [] as number[],
 })
 
 // ===== UNIDADES =====
@@ -199,10 +223,91 @@ const eliminarGeneracion = (id: number) => {
   }
 }
 
+// ===== ASIGNAR CARRERAS =====
+const abrirAsignarCarreras = (unidad: Unidad) => {
+  unidadParaAsignar.value = unidad
+  // Cargar carreras ya asignadas a esta unidad
+  formAsignarCarreras.carreras_ids = []
+  mostrarAsignarCarreras.value = true
+}
+
+const toggleCarrera = (carreraId: number) => {
+  const index = formAsignarCarreras.carreras_ids.indexOf(carreraId)
+  if (index > -1) {
+    formAsignarCarreras.carreras_ids.splice(index, 1)
+  } else {
+    formAsignarCarreras.carreras_ids.push(carreraId)
+  }
+}
+
+const guardarAsignacionCarreras = () => {
+  if (!unidadParaAsignar.value) return
+  
+  formAsignarCarreras.post(`/admin-academica/unidades/${unidadParaAsignar.value.id}/asignar-carreras`, {
+    onSuccess: () => {
+      mostrarAsignarCarreras.value = false
+      formAsignarCarreras.reset()
+      unidadParaAsignar.value = null
+    }
+  })
+}
+
+const cancelarAsignacion = () => {
+  mostrarAsignarCarreras.value = false
+  formAsignarCarreras.reset()
+  unidadParaAsignar.value = null
+}
+
 const getEstatusLabel = (estatus: string) => estatus === 'A' ? 'Activo' : 'Inactivo'
 const getEstatusClass = (estatus: string) => estatus === 'A' 
   ? 'bg-green-100 text-green-800' 
   : 'bg-red-100 text-red-800'
+
+// ===== NIVELES DE ESTUDIO =====
+interface NivelEstudio { id: number; nombre: string; estatus: string }
+
+const abrirFormNivelCrear = () => {
+  editandoNivel.value = null
+  formNivel.reset(); formNivel.clearErrors(); mostrarFormNivel.value = true
+}
+const abrirFormNivelEditar = (nivel: NivelEstudio) => {
+  editandoNivel.value = nivel
+  formNivel.nombre = nivel.nombre
+  formNivel.estatus = nivel.estatus
+  mostrarFormNivel.value = true
+}
+const cancelarNivel = () => { mostrarFormNivel.value = false; formNivel.reset(); formNivel.clearErrors(); editandoNivel.value = null }
+const guardarNivel = () => {
+  if (editandoNivel.value) {
+    formNivel.put(`/admin-academica/niveles/${editandoNivel.value.id}`, { onSuccess: () => cancelarNivel() })
+  } else {
+    formNivel.post('/admin-academica/niveles', { onSuccess: () => cancelarNivel() })
+  }
+}
+const eliminarNivel = (id: number) => { if (confirm('¿Eliminar nivel de estudio?')) formNivel.delete(`/admin-academica/niveles/${id}`) }
+
+// ===== CICLOS ESCOLARES =====
+interface CicloEscolar { id: number; nombre: string; fecha_inicio: string | null; fecha_fin: string | null; estatus: string }
+
+const abrirFormCicloCrear = () => { editandoCiclo.value = null; formCiclo.reset(); formCiclo.clearErrors(); mostrarFormCiclo.value = true }
+const abrirFormCicloEditar = (ciclo: CicloEscolar) => {
+  editandoCiclo.value = ciclo
+  formCiclo.nombre = ciclo.nombre
+  formCiclo.fecha_inicio = ciclo.fecha_inicio || ''
+  formCiclo.fecha_fin = ciclo.fecha_fin || ''
+  formCiclo.estatus = ciclo.estatus
+  mostrarFormCiclo.value = true
+}
+const cancelarCiclo = () => { mostrarFormCiclo.value = false; formCiclo.reset(); formCiclo.clearErrors(); editandoCiclo.value = null }
+const guardarCiclo = () => {
+  if (editandoCiclo.value) {
+    formCiclo.put(`/admin-academica/ciclos/${editandoCiclo.value.id}`, { onSuccess: () => cancelarCiclo() })
+  } else {
+    formCiclo.post('/admin-academica/ciclos', { onSuccess: () => cancelarCiclo() })
+  }
+}
+const eliminarCiclo = (id: number) => { if (confirm('¿Eliminar ciclo escolar?')) formCiclo.delete(`/admin-academica/ciclos/${id}`) }
+
 
 </script>
 
@@ -235,6 +340,18 @@ const getEstatusClass = (estatus: string) => estatus === 'A'
           :class="['px-6 py-3 font-medium border-b-2 transition-colors', tabActiva === 'generaciones' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-600 hover:text-purple-600']"
         >
           Gestor de Generaciones
+        </button>
+        <button
+          @click="tabActiva = 'niveles'"
+          :class="['px-6 py-3 font-medium border-b-2 transition-colors', tabActiva === 'niveles' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-600 hover:text-indigo-600']"
+        >
+          Niveles de Estudio
+        </button>
+        <button
+          @click="tabActiva = 'ciclos'"
+          :class="['px-6 py-3 font-medium border-b-2 transition-colors', tabActiva === 'ciclos' ? 'border-amber-600 text-amber-600' : 'border-transparent text-gray-600 hover:text-amber-600']"
+        >
+          Ciclos Escolares
         </button>
       </div>
 
@@ -293,6 +410,46 @@ const getEstatusClass = (estatus: string) => estatus === 'A'
           </CardContent>
         </Card>
 
+        <!-- Modal Asignar Carreras -->
+        <Card v-if="mostrarAsignarCarreras">
+          <CardHeader>
+            <CardTitle>Asignar Carreras a {{ unidadParaAsignar?.nombre }}</CardTitle>
+            <CardDescription>Selecciona las carreras que pertenecen a esta unidad</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form @submit.prevent="guardarAsignacionCarreras" class="space-y-4">
+              <div class="max-h-96 overflow-y-auto border rounded-md p-4 space-y-2">
+                <label 
+                  v-for="carrera in carreras" 
+                  :key="carrera.id"
+                  class="flex items-center gap-3 p-3 rounded hover:bg-muted/50 cursor-pointer transition-colors"
+                >
+                  <input 
+                    type="checkbox" 
+                    :value="carrera.id"
+                    :checked="formAsignarCarreras.carreras_ids.includes(carrera.id)"
+                    @change="toggleCarrera(carrera.id)"
+                    class="w-4 h-4 rounded border-gray-300"
+                  />
+                  <div class="flex-1">
+                    <div class="font-medium">{{ carrera.nombre }}</div>
+                    <div class="text-sm text-muted-foreground">{{ carrera.nivel || 'Sin nivel' }}</div>
+                  </div>
+                  <span :class="['text-xs px-2 py-1 rounded', getEstatusClass(carrera.estatus)]">
+                    {{ getEstatusLabel(carrera.estatus) }}
+                  </span>
+                </label>
+              </div>
+              <div class="flex gap-3 pt-4">
+                <Button type="submit" :disabled="formAsignarCarreras.processing" class="bg-purple-600 hover:bg-purple-700">
+                  {{ formAsignarCarreras.processing ? 'Guardando...' : 'Guardar Asignación' }}
+                </Button>
+                <Button type="button" @click="cancelarAsignacion" variant="outline">Cancelar</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
         <!-- Tabla Unidades -->
         <Card>
           <CardContent class="pt-6">
@@ -318,8 +475,149 @@ const getEstatusClass = (estatus: string) => estatus === 'A'
                   </td>
                   <td class="py-3 px-4 text-right">
                     <div class="flex gap-2 justify-end">
+                      <Button @click="abrirAsignarCarreras(unidad)" variant="outline" size="sm" class="bg-purple-50 hover:bg-purple-100">Asignar Carreras</Button>
                       <Button @click="abrirFormUnidadEditar(unidad)" variant="outline" size="sm">Editar</Button>
                       <Button @click="eliminarUnidad(unidad.id)" variant="destructive" size="sm">Eliminar</Button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </div>
+
+      <!-- PESTAÑA 4: NIVELES DE ESTUDIO -->
+      <div v-if="tabActiva === 'niveles'" class="space-y-6">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Niveles de Estudio</h2>
+          <Button @click="abrirFormNivelCrear" v-if="!mostrarFormNivel" class="bg-indigo-600 hover:bg-indigo-700">
+            Crear Nuevo Nivel
+          </Button>
+        </div>
+        <Card v-if="mostrarFormNivel">
+          <CardHeader>
+            <CardTitle>{{ editandoNivel ? 'Editar Nivel' : 'Nuevo Nivel' }}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form @submit.prevent="guardarNivel" class="space-y-4">
+              <div>
+                <Label for="nivel_nombre">Nombre *</Label>
+                <Input id="nivel_nombre" v-model="formNivel.nombre" required />
+              </div>
+              <div>
+                <Label for="nivel_estatus">Estatus *</Label>
+                <select id="nivel_estatus" v-model="formNivel.estatus" required class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                  <option value="A">Activo</option>
+                  <option value="I">Inactivo</option>
+                </select>
+              </div>
+              <div class="flex gap-3">
+                <Button type="submit" :disabled="formNivel.processing" class="bg-green-600 hover:bg-green-700">
+                  {{ formNivel.processing ? 'Guardando...' : 'Guardar' }}
+                </Button>
+                <Button type="button" @click="cancelarNivel" variant="outline">Cancelar</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent class="pt-6">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b">
+                  <th class="text-left py-3 px-4">Nombre</th>
+                  <th class="text-center py-3 px-4">Estatus</th>
+                  <th class="text-right py-3 px-4">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="nivel in nivelesEstudio" :key="nivel.id" class="border-b hover:bg-muted/50">
+                  <td class="py-3 px-4">{{ nivel.nombre }}</td>
+                  <td class="py-3 px-4 text-center">
+                    <span :class="['text-xs px-2 py-1 rounded', getEstatusClass(nivel.estatus)]">{{ getEstatusLabel(nivel.estatus) }}</span>
+                  </td>
+                  <td class="py-3 px-4 text-right">
+                    <div class="flex gap-2 justify-end">
+                      <Button @click="abrirFormNivelEditar(nivel)" variant="outline" size="sm">Editar</Button>
+                      <Button @click="eliminarNivel(nivel.id)" variant="destructive" size="sm">Eliminar</Button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </div>
+
+      <!-- PESTAÑA 5: CICLOS ESCOLARES -->
+      <div v-if="tabActiva === 'ciclos'" class="space-y-6">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Ciclos Escolares</h2>
+          <Button @click="abrirFormCicloCrear" v-if="!mostrarFormCiclo" class="bg-amber-600 hover:bg-amber-700">
+            Crear Nuevo Ciclo
+          </Button>
+        </div>
+        <Card v-if="mostrarFormCiclo">
+          <CardHeader>
+            <CardTitle>{{ editandoCiclo ? 'Editar Ciclo' : 'Nuevo Ciclo' }}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form @submit.prevent="guardarCiclo" class="space-y-4">
+              <div>
+                <Label for="ciclo_nombre">Nombre *</Label>
+                <Input id="ciclo_nombre" v-model="formCiclo.nombre" required placeholder="Ej: 2024-2025" />
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <Label for="ciclo_inicio">Fecha Inicio</Label>
+                  <Input id="ciclo_inicio" type="date" v-model="formCiclo.fecha_inicio" />
+                </div>
+                <div>
+                  <Label for="ciclo_fin">Fecha Fin</Label>
+                  <Input id="ciclo_fin" type="date" v-model="formCiclo.fecha_fin" />
+                </div>
+              </div>
+              <div>
+                <Label for="ciclo_estatus">Estatus *</Label>
+                <select id="ciclo_estatus" v-model="formCiclo.estatus" required class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                  <option value="A">Activo</option>
+                  <option value="I">Inactivo</option>
+                </select>
+              </div>
+              <div class="flex gap-3">
+                <Button type="submit" :disabled="formCiclo.processing" class="bg-green-600 hover:bg-green-700">
+                  {{ formCiclo.processing ? 'Guardando...' : 'Guardar' }}
+                </Button>
+                <Button type="button" @click="cancelarCiclo" variant="outline">Cancelar</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent class="pt-6">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b">
+                  <th class="text-left py-3 px-4">Nombre</th>
+                  <th class="text-left py-3 px-4">Inicio</th>
+                  <th class="text-left py-3 px-4">Fin</th>
+                  <th class="text-center py-3 px-4">Estatus</th>
+                  <th class="text-right py-3 px-4">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="ciclo in ciclosEscolares" :key="ciclo.id" class="border-b hover:bg-muted/50">
+                  <td class="py-3 px-4">{{ ciclo.nombre }}</td>
+                  <td class="py-3 px-4">{{ ciclo.fecha_inicio || '-' }}</td>
+                  <td class="py-3 px-4">{{ ciclo.fecha_fin || '-' }}</td>
+                  <td class="py-3 px-4 text-center">
+                    <span :class="['text-xs px-2 py-1 rounded', getEstatusClass(ciclo.estatus)]">{{ getEstatusLabel(ciclo.estatus) }}</span>
+                  </td>
+                  <td class="py-3 px-4 text-right">
+                    <div class="flex gap-2 justify-end">
+                      <Button @click="abrirFormCicloEditar(ciclo)" variant="outline" size="sm">Editar</Button>
+                      <Button @click="eliminarCiclo(ciclo.id)" variant="destructive" size="sm">Eliminar</Button>
                     </div>
                   </td>
                 </tr>

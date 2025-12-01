@@ -21,22 +21,43 @@ class PerfilController extends Controller
             abort(403, 'Usuario no autenticado');
         }
         
-        $egresado = Egresado::with(['genero', 'estadoCivil', 'estatus', 'carreras.carrera', 'carreras.generacion'])
+        $egresado = Egresado::with(['genero', 'estadoCivil', 'estatus', 'carreras.carrera', 'carreras.generacion', 'unidad', 'carrera'])
             ->where('email', $user->email)
             ->first();
 
         // Si no existe un egresado, crear uno básico con los datos del usuario
         if (!$egresado) {
+            // Determinar el estatus según el rol del usuario
+            $estatusId = 1; // Por defecto
+            if ($user->hasRole('Estudiantes')) {
+                $estatusId = CatEstatus::where('nombre', 'Estudiante')->value('id') ?? 1;
+            } elseif ($user->hasRole('Egresados')) {
+                $estatusId = CatEstatus::where('nombre', 'Egresado')->value('id') ?? 2;
+            }
+            
             $egresado = Egresado::create([
                 'email' => $user->email,
                 'nombre' => $user->name ?? '',
                 'apellidos' => '',
-                'estatus_id' => 1, // Asumiendo que 1 es un estatus por defecto
+                'estatus_id' => $estatusId,
             ]);
             
             // Recargar con relaciones
-            $egresado = Egresado::with(['genero', 'estadoCivil', 'estatus', 'carreras.carrera', 'carreras.generacion'])
+            $egresado = Egresado::with(['genero', 'estadoCivil', 'estatus', 'carreras.carrera', 'carreras.generacion', 'unidad', 'carrera'])
                 ->find($egresado->id);
+        } else {
+            // Actualizar el estatus si no está configurado correctamente
+            $estatusId = null;
+            if ($user->hasRole('Estudiantes')) {
+                $estatusId = CatEstatus::where('nombre', 'Estudiante')->value('id');
+            } elseif ($user->hasRole('Egresados')) {
+                $estatusId = CatEstatus::where('nombre', 'Egresado')->value('id');
+            }
+            
+            if ($estatusId && $egresado->estatus_id !== $estatusId) {
+                $egresado->update(['estatus_id' => $estatusId]);
+                $egresado->refresh();
+            }
         }
 
         $generos = CatGenero::all();
@@ -65,10 +86,11 @@ class PerfilController extends Controller
             'apellidos' => 'required|string|max:200',
             'curp' => 'nullable|string|max:18',
             'email' => 'required|email|max:150',
-            'domicilio' => 'nullable|string',
+            'domicilio' => 'nullable|string|max:500',
+            'fecha_nacimiento' => 'nullable|date',
+            'estado_origen' => 'nullable|string|max:100',
             'genero_id' => 'nullable|integer',
             'estado_civil_id' => 'nullable|integer',
-            'estatus_id' => 'nullable|integer',
         ]);
 
         $user = auth()->user();
@@ -80,6 +102,17 @@ class PerfilController extends Controller
         $egresado = Egresado::where('id', $validated['id'])
             ->where('email', $user->email)
             ->firstOrFail();
+        
+        // Determinar el estatus según el rol del usuario
+        $estatusId = null;
+        if ($user->hasRole('Estudiantes')) {
+            $estatusId = CatEstatus::where('nombre', 'Estudiante')->value('id') ?? 1;
+        } elseif ($user->hasRole('Egresados')) {
+            $estatusId = CatEstatus::where('nombre', 'Egresado')->value('id') ?? 2;
+        }
+        
+        // Agregar el estatus calculado
+        $validated['estatus_id'] = $estatusId;
         
         $egresado->update($validated);
 

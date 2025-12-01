@@ -22,7 +22,18 @@ class CreateNewUser implements CreatesNewUsers
     public function create(array $input): User
     {
         Validator::make($input, [
-            'name' => ['required', 'string', 'max:255'],
+            'nombre' => [
+                'required', 
+                'string', 
+                'max:255',
+                'regex:/^[A-ZÁÉÍÓÚÑÜ][a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]+$/', // Debe iniciar con mayúscula
+            ],
+            'apellidos' => [
+                'required', 
+                'string', 
+                'max:255',
+                'regex:/^[A-ZÁÉÍÓÚÑÜ][a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]+$/', // Debe iniciar con mayúscula
+            ],
             'email' => [
                 'required',
                 'string',
@@ -30,13 +41,26 @@ class CreateNewUser implements CreatesNewUsers
                 'max:255',
                 Rule::unique(User::class),
             ],
+            'unidad_id' => ['required', 'integer', 'exists:unidad,id'],
+            'carrera_id' => ['required', 'integer', 'exists:carrera,id'],
+            'fecha_nacimiento' => ['nullable', 'date', 'before:today'],
+            'estado_origen' => ['nullable', 'string', 'max:100'],
             'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-            // Registro público solo para Estudiantes y Egresados
             'user_type' => ['required', 'string', 'in:Estudiantes,Egresados'],
+            'anio_egreso' => ['nullable', 'integer', 'min:1980', 'max:' . date('Y'), 'required_if:user_type,Egresados'],
+        ], [
+            'nombre.regex' => 'El nombre debe iniciar con mayúscula y solo puede contener letras y espacios.',
+            'apellidos.regex' => 'Los apellidos deben iniciar con mayúscula y solo pueden contener letras y espacios.',
+            'unidad_id.required' => 'Debes seleccionar una unidad.',
+            'carrera_id.required' => 'Debes seleccionar una carrera.',
+            'user_type.in' => 'Tipo de usuario no válido.',
+            'anio_egreso.required_if' => 'El año de egreso es obligatorio para egresados.',
+            'anio_egreso.min' => 'El año de egreso debe ser mayor a 1980.',
+            'anio_egreso.max' => 'El año de egreso no puede ser mayor al año actual.',
         ])->validate();
 
         $user = User::create([
-            'name' => $input['name'],
+            'name' => $input['nombre'] . ' ' . $input['apellidos'],
             'email' => $input['email'],
             'password' => Hash::make($input['password']),
         ]);
@@ -44,31 +68,36 @@ class CreateNewUser implements CreatesNewUsers
         // Asignar el rol según el tipo de usuario seleccionado
         $user->assignRole($input['user_type']);
 
-        // Si es Egresado o Estudiante, asegurar existencia en tabla egresado (sin duplicar)
-        if (in_array($input['user_type'], ['Egresados', 'Estudiantes'])) {
-            $egresado = Egresado::where('email', $input['email'])->first();
+        // Crear o actualizar registro de egresado con unidad y carrera
+        $egresado = Egresado::where('email', $input['email'])->first();
 
-            // Separar nombre y apellidos (asumiendo formato "Nombre Apellidos")
-            $nameParts = explode(' ', $input['name'], 2);
-            $nombre = $nameParts[0] ?? '';
-            $apellidos = $nameParts[1] ?? '';
-
-            if (!$egresado) {
-                Egresado::create([
-                    'email' => $input['email'],
-                    'nombre' => $nombre,
-                    'apellidos' => $apellidos,
-                    'estatus_id' => 1, // Estatus activo por defecto
-                ]);
-            } else {
-                // Actualizar nombre/apellidos si están vacíos, sin alterar otros datos
-                $egresado->nombre = $egresado->nombre ?: $nombre;
-                $egresado->apellidos = $egresado->apellidos ?: $apellidos;
-                if (!$egresado->estatus_id) {
-                    $egresado->estatus_id = 1;
-                }
-                $egresado->save();
+        if (!$egresado) {
+            Egresado::create([
+                'user_id' => $user->id,
+                'email' => $input['email'],
+                'nombre' => $input['nombre'],
+                'apellidos' => $input['apellidos'],
+                'fecha_nacimiento' => $input['fecha_nacimiento'] ?? null,
+                'estado_origen' => $input['estado_origen'] ?? null,
+                'unidad_id' => $input['unidad_id'],
+                'carrera_id' => $input['carrera_id'],
+                'anio_egreso' => $input['anio_egreso'] ?? null,
+                'estatus_id' => 1, // Estatus activo por defecto
+            ]);
+        } else {
+            // Actualizar datos del egresado
+            $egresado->user_id = $user->id;
+            $egresado->nombre = $egresado->nombre ?: $input['nombre'];
+            $egresado->apellidos = $egresado->apellidos ?: $input['apellidos'];
+            $egresado->fecha_nacimiento = $input['fecha_nacimiento'] ?? $egresado->fecha_nacimiento;
+            $egresado->estado_origen = $input['estado_origen'] ?? $egresado->estado_origen;
+            $egresado->unidad_id = $input['unidad_id'];
+            $egresado->carrera_id = $input['carrera_id'];
+            $egresado->anio_egreso = $input['anio_egreso'] ?? $egresado->anio_egreso;
+            if (!$egresado->estatus_id) {
+                $egresado->estatus_id = 1;
             }
+            $egresado->save();
         }
 
         return $user;

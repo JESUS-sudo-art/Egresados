@@ -16,6 +16,7 @@ interface Usuario {
   id: number
   name: string
   email: string
+  roles: string[]
   unidades: Unidad[]
 }
 
@@ -96,13 +97,13 @@ const toggleUnidad = (unidadId: number) => {
 </script>
 
 <template>
-  <Head title="Admin General" />
-  <AppLayout :breadcrumbs="[{ title: 'Admin General', href: '/admin-general' }]">
+  <Head title="Gestor de Usuarios" />
+  <AppLayout :breadcrumbs="[{ title: 'Gestor de Usuarios', href: '/admin-general' }]">
     <div class="container mx-auto px-4 py-8 max-w-6xl space-y-6">
       
       <!-- Título -->
       <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold">Gestor de Usuarios (Administradores)</h1>
+        <h1 class="text-3xl font-bold">Gestor de Usuarios</h1>
         <Button 
           @click="abrirFormularioCrear"
           v-if="!mostrarFormulario"
@@ -203,9 +204,9 @@ const toggleUnidad = (unidadId: number) => {
       <!-- Tabla de Usuarios -->
       <Card>
         <CardHeader>
-          <CardTitle>Usuarios Administradores</CardTitle>
+          <CardTitle>Todos los Usuarios del Sistema</CardTitle>
           <CardDescription>
-            Lista de todos los usuarios administradores registrados en el sistema
+            Lista completa de usuarios registrados con sus roles asignados
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -215,6 +216,7 @@ const toggleUnidad = (unidadId: number) => {
                 <tr class="border-b">
                   <th class="text-left py-3 px-4 font-semibold text-sm">Nombre</th>
                   <th class="text-left py-3 px-4 font-semibold text-sm">Email</th>
+                  <th class="text-left py-3 px-4 font-semibold text-sm">Roles</th>
                   <th class="text-left py-3 px-4 font-semibold text-sm">Unidades Asignadas</th>
                   <th class="text-right py-3 px-4 font-semibold text-sm">Acciones</th>
                 </tr>
@@ -227,6 +229,18 @@ const toggleUnidad = (unidadId: number) => {
                 >
                   <td class="py-3 px-4 font-medium">{{ usuario.name }}</td>
                   <td class="py-3 px-4">{{ usuario.email }}</td>
+                  <td class="py-3 px-4">
+                    <div v-if="usuario.roles && usuario.roles.length > 0" class="flex flex-wrap gap-1">
+                      <span 
+                        v-for="rol in usuario.roles" 
+                        :key="rol"
+                        class="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded font-medium"
+                      >
+                        {{ rol }}
+                      </span>
+                    </div>
+                    <span v-else class="text-muted-foreground text-sm">Sin roles asignados</span>
+                  </td>
                   <td class="py-3 px-4">
                     <div v-if="usuario.unidades.length > 0" class="flex flex-wrap gap-1">
                       <span 

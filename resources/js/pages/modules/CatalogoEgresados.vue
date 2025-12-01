@@ -7,6 +7,11 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
+interface Encuesta {
+  id: number
+  nombre: string
+}
+
 interface Egresado {
   id: number
   matricula: string | null
@@ -15,6 +20,8 @@ interface Egresado {
   email: string | null
   estatus: string
   carreras: string[]
+  encuestas_contestadas: Encuesta[]
+  num_encuestas: number
 }
 
 interface Filters {
@@ -28,6 +35,12 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+// Debug: verificar qué datos llegan
+console.log('Egresados recibidos:', props.egresados)
+if (props.egresados.length > 0) {
+  console.log('Primer egresado:', props.egresados[0])
+}
 
 const search = ref(props.filters.search || '')
 
@@ -82,6 +95,7 @@ const submitSearch = () => {
                   <th class="text-left py-2 px-3 text-sm font-semibold">Nombre</th>
                   <th class="text-left py-2 px-3 text-sm font-semibold">Carreras</th>
                   <th class="text-left py-2 px-3 text-sm font-semibold">Email</th>
+                  <th class="text-left py-2 px-3 text-sm font-semibold">Encuestas</th>
                   <th class="text-left py-2 px-3 text-sm font-semibold">Estatus</th>
                   <th class="text-left py-2 px-3 text-sm font-semibold">Acciones</th>
                 </tr>
@@ -97,6 +111,12 @@ const submitSearch = () => {
                     </div>
                   </td>
                   <td class="py-2 px-3 text-sm">{{ e.email || '—' }}</td>
+                  <td class="py-2 px-3 text-sm">
+                    <div class="flex flex-wrap gap-1">
+                      <Badge v-for="enc in e.encuestas_contestadas" :key="enc.id" variant="default" class="text-xs">{{ enc.nombre }}</Badge>
+                      <span v-if="!e.encuestas_contestadas.length" class="text-muted-foreground">Sin encuestas</span>
+                    </div>
+                  </td>
                   <td class="py-2 px-3 text-sm">
                     <Badge :variant="e.estatus === 'ACTIVO' ? 'default' : 'outline'" class="text-xs">{{ e.estatus }}</Badge>
                   </td>

@@ -21,35 +21,22 @@ class DashboardController extends Controller
 
         // Roles
         $esEstudianteOEgresado = $user->hasAnyRole(['Estudiantes', 'Egresados']);
-        $esAdminGeneral = $user->hasRole('Administrador general');
+        $esAdmin = $user->hasAnyRole(['Administrador general', 'Administrador de unidad', 'Administrador academico']);
+        
         \Log::info('Dashboard - Es Estudiante o Egresado: ' . ($esEstudianteOEgresado ? 'Sí' : 'No'));
-        \Log::info('Dashboard - Es Admin General: ' . ($esAdminGeneral ? 'Sí' : 'No'));
+        \Log::info('Dashboard - Es Administrador: ' . ($esAdmin ? 'Sí' : 'No'));
 
-        if ($esAdminGeneral) {
-            // Admin General ve todas las encuestas activas (independiente de asignación)
-            $todasAsignaciones = EncuestaAsignada::with(['encuesta'])
-                ->whereHas('encuesta', function($q) { $q->where('estatus', 'A'); })
-                ->get()
-                ->map(function($asignacion) {
-                    return [
-                        'id' => $asignacion->id,
-                        'encuesta_id' => $asignacion->encuesta_id,
-                        'nombre' => $asignacion->encuesta->nombre,
-                        'descripcion' => $asignacion->encuesta->descripcion,
-                        'fecha_inicio' => $asignacion->encuesta->fecha_inicio,
-                        'fecha_fin' => $asignacion->encuesta->fecha_fin,
-                        'tipo_asignacion' => $asignacion->tipo_asignacion,
-                        'ya_respondida' => false,
-                    ];
-                });
+        // Si es administrador (cualquier tipo), no mostrar encuestas
+        if ($esAdmin) {
+            \Log::info('Dashboard - Usuario administrador, no se muestran encuestas');
             return Inertia::render('Dashboard', [
-                'encuestasAsignadas' => $todasAsignaciones->values()->all()
+                'encuestasAsignadas' => []
             ]);
         }
 
         if (!$esEstudianteOEgresado) {
-            // Otros administradores sin rol estudiante/egresado no ven encuestas
-            \Log::info('Dashboard - Usuario administrador distinto de Admin General, no se muestran encuestas');
+            // Usuarios sin rol estudiante/egresado ni admin no ven encuestas
+            \Log::info('Dashboard - Usuario sin rol de estudiante/egresado, no se muestran encuestas');
             return Inertia::render('Dashboard', [
                 'encuestasAsignadas' => []
             ]);
@@ -164,10 +151,15 @@ class DashboardController extends Controller
         }
 
         // Agregar información de si ya respondió cada encuesta
-        $encuestasConEstado = $encuestasAsignadas->map(function($encuesta) use ($user) {
-            $yaRespondio = Respuesta::where('encuesta_id', $encuesta['encuesta_id'])
-                ->where('egresado_id', $user->id)
-                ->exists();
+        $encuestasConEstado = $encuestasAsignadas->map(function($encuesta) use ($user, $egresado) {
+            $yaRespondio = false;
+            
+            // Solo verificar si existe un egresado asociado
+            if ($egresado) {
+                $yaRespondio = Respuesta::where('encuesta_id', $encuesta['encuesta_id'])
+                    ->where('egresado_id', $egresado->id)
+                    ->exists();
+            }
             
             return array_merge($encuesta, [
                 'ya_respondida' => $yaRespondio

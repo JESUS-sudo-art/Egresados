@@ -3,18 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Encuesta;
-use App\Models\Pregunta;
-use App\Models\Opcion;
 use App\Models\EncuestaAsignada;
 use App\Models\Carrera;
 use App\Models\Generacion;
 use App\Models\Unidad;
 use App\Models\TipoPregunta;
 use Illuminate\Http\Request;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Inertia\Inertia;
 
-class AdminUnidadController extends Controller
+
+class AdminUnidadController extends Controller 
 {
+    use AuthorizesRequests;
+    
     public function index()
     {
         $encuestas = Encuesta::orderByDesc('id')->get(['id','nombre','descripcion','fecha_inicio','fecha_fin','estatus']);
@@ -41,6 +43,8 @@ class AdminUnidadController extends Controller
     // ===== ENCUESTAS =====
     public function storeEncuesta(Request $request)
     {
+        // No necesitamos authorize aquí porque el middleware ya maneja permisos
+        
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
@@ -53,6 +57,7 @@ class AdminUnidadController extends Controller
     public function updateEncuesta(Request $request, $id)
     {
         $encuesta = Encuesta::findOrFail($id);
+        
         $validated = $request->validate([
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
@@ -80,7 +85,7 @@ class AdminUnidadController extends Controller
         $encuesta->load(['preguntas.opciones']);
         foreach ($encuesta->preguntas as $pregunta) {
             // Eliminar opciones de la pregunta
-            Opcion::where('pregunta_id', $pregunta->id)->delete();
+            \App\Models\Opcion::where('pregunta_id', $pregunta->id)->delete();
             // Eliminar la pregunta
             $pregunta->delete();
         }
@@ -88,127 +93,6 @@ class AdminUnidadController extends Controller
         // Finalmente eliminar la encuesta
         $encuesta->delete();
         return back()->with('success', 'Encuesta eliminada');
-    }
-
-    // ===== PREGUNTAS =====
-    public function listPreguntas($encuestaId)
-    {
-        $preguntas = Pregunta::with(['opciones', 'tipo'])
-            ->where('encuesta_id', $encuestaId)
-            ->orderBy('orden')
-            ->get();
-        return response()->json($preguntas);
-    }
-
-    public function storePregunta(Request $request, $encuestaId)
-    {
-        $validated = $request->validate([
-            'texto' => 'required|string',
-            'tipo' => 'required|string|in:Abierta,Opción Múltiple,Casillas de Verificación,Escala Likert,Sí/No,Numérica,Fecha',
-            'orden' => 'nullable|integer|min:0',
-            'dimension_id' => 'nullable|integer|exists:dimension,id',
-        ]);
-
-        // Validar que la dimensión (si viene) pertenezca a la misma encuesta
-        if (!empty($validated['dimension_id'])) {
-            $belongs = \App\Models\Dimension::where('id',$validated['dimension_id'])->where('encuesta_id',$encuestaId)->exists();
-            if (!$belongs) {
-                return response()->json(['error' => 'La dimensión no pertenece a la encuesta'], 422);
-            }
-        }
-
-        $tipo = TipoPregunta::firstOrCreate(['descripcion' => $validated['tipo']], ['estatus' => 'A']);
-        $pregunta = Pregunta::create([
-            'encuesta_id' => $encuestaId,
-            'texto' => $validated['texto'],
-            'tipo_pregunta_id' => $tipo->id,
-            'orden' => $validated['orden'] ?? 0,
-            'dimension_id' => $validated['dimension_id'] ?? null,
-        ]);
-        // Si la petición espera JSON (ej. llamada manual con XHR) devolver JSON
-        if ($request->expectsJson()) {
-            return response()->json($pregunta->load(['opciones','tipo']), 201);
-        }
-        // Inertia (formularios con router.post) espera un redirect/back
-        return back()->with('success', 'Pregunta creada');
-    }
-
-    public function updatePregunta(Request $request, $id)
-    {
-        $pregunta = Pregunta::findOrFail($id);
-        $validated = $request->validate([
-            'texto' => 'required|string',
-            'tipo' => 'required|string|in:Abierta,Opción Múltiple,Casillas de Verificación,Escala Likert,Sí/No,Numérica,Fecha',
-            'orden' => 'nullable|integer|min:0',
-            'dimension_id' => 'nullable|integer|exists:dimension,id',
-        ]);
-
-        if (!empty($validated['dimension_id'])) {
-            $belongs = \App\Models\Dimension::where('id',$validated['dimension_id'])->where('encuesta_id',$pregunta->encuesta_id)->exists();
-            if (!$belongs) {
-                return response()->json(['error' => 'La dimensión no pertenece a la encuesta de la pregunta'], 422);
-            }
-        }
-        $tipo = TipoPregunta::firstOrCreate(['descripcion' => $validated['tipo']], ['estatus' => 'A']);
-        $pregunta->update([
-            'texto' => $validated['texto'],
-            'tipo_pregunta_id' => $tipo->id,
-            'orden' => $validated['orden'] ?? 0,
-            'dimension_id' => $validated['dimension_id'] ?? $pregunta->dimension_id,
-        ]);
-        if ($request->expectsJson()) {
-            return response()->json($pregunta->load(['opciones','tipo']));
-        }
-        return back()->with('success', 'Pregunta actualizada');
-    }
-
-    public function destroyPregunta($id)
-    {
-        $pregunta = Pregunta::findOrFail($id);
-        $pregunta->delete();
-        return response()->json(['ok' => true]);
-    }
-
-    // ===== OPCIONES =====
-    public function storeOpcion(Request $request, $preguntaId)
-    {
-        $validated = $request->validate([
-            'texto' => 'nullable|string',
-            'valor' => 'nullable|integer',
-            'orden' => 'nullable|integer|min:0',
-        ]);
-        Opcion::create([
-            'pregunta_id' => $preguntaId,
-            'texto' => $validated['texto'] ?? 'Nueva opción',
-            'valor' => $validated['valor'] ?? null,
-            'orden' => $validated['orden'] ?? 0,
-        ]);
-        return back()->with('success', 'Opción agregada');
-    }
-
-    public function updateOpcion(Request $request, $id)
-    {
-        $opcion = Opcion::findOrFail($id);
-        $validated = $request->validate([
-            'texto' => 'nullable|string',
-            'valor' => 'nullable|integer',
-            'orden' => 'nullable|integer|min:0',
-        ]);
-        
-        // Si el texto está vacío, usar un valor por defecto
-        if (isset($validated['texto'])) {
-            $validated['texto'] = $validated['texto'] ?: 'Opción sin texto';
-        }
-        
-        $opcion->update($validated);
-        return response()->json($opcion);
-    }
-
-    public function destroyOpcion($id)
-    {
-        $opcion = Opcion::findOrFail($id);
-        $opcion->delete();
-        return back()->with('success', 'Opción eliminada');
     }
 
     // ===== ASIGNACIONES =====

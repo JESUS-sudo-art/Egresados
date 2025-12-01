@@ -16,16 +16,17 @@ class RolesAndPermissionsSeeder extends Seeder
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Crear permisos
-        $permissions = [
-            'ver',
-            'ver_uno',
-            'crear',
-            'actualizar',
-            'eliminar',
-            'restaurar',
-            'forzar_eliminacion',
-        ];
+        // Definir acciones y catálogos
+        $acciones = ['crear', 'actualizar', 'eliminar', 'ver', 'ver_uno', 'restaurar', 'forzar_eliminacion'];
+        $catalogos = ['egresado', 'encuesta', 'carrera', 'unidad'];
+
+        // Crear permisos dinámicamente
+        $permissions = [];
+        foreach ($catalogos as $catalogo) {
+            foreach ($acciones as $accion) {
+                $permissions[] = "{$accion}_{$catalogo}";
+            }
+        }
 
         foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
@@ -44,19 +45,35 @@ class RolesAndPermissionsSeeder extends Seeder
         }
 
         // Asignar todos los permisos al Administrador general
-        // Puede: gestionar usuarios, roles, validar egresados SICE, acceso completo
         $adminGeneral = Role::findByName('Administrador general');
         $adminGeneral->syncPermissions(Permission::all());
 
         // Asignar permisos a Administrador de unidad
-        // Puede: generar reportes, respaldar BD, gestionar encuestas de su unidad
+        // Puede: gestionar encuestas
         $adminUnidad = Role::findByName('Administrador de unidad');
-        $adminUnidad->syncPermissions(['ver', 'ver_uno', 'crear', 'actualizar', 'eliminar']);
+        $adminUnidad->syncPermissions([
+            'ver_encuesta',
+            'ver_uno_encuesta',
+            'crear_encuesta',
+            'actualizar_encuesta',
+            'eliminar_encuesta',
+        ]);
 
         // Asignar permisos a Administrador academico
-        // Puede: gestionar unidades, carreras, generaciones
+        // Puede: gestionar unidades, carreras
         $adminAcademico = Role::findByName('Administrador academico');
-        $adminAcademico->syncPermissions(['ver', 'ver_uno', 'crear', 'actualizar', 'eliminar']);
+        $adminAcademico->syncPermissions([
+            'ver_unidad',
+            'ver_uno_unidad',
+            'crear_unidad',
+            'actualizar_unidad',
+            'eliminar_unidad',
+            'ver_carrera',
+            'ver_uno_carrera',
+            'crear_carrera',
+            'actualizar_carrera',
+            'eliminar_carrera',
+        ]);
 
 
     }

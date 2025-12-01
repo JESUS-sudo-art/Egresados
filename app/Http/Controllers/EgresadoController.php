@@ -8,6 +8,9 @@ use App\Models\Generacion;
 use App\Models\CatEstadoCivil;
 use App\Models\CatEstatus;
 use App\Models\CatGenero;
+use App\Models\Encuesta;
+use App\Models\CedulaPreegreso;
+use App\Models\EncuestaLaboral;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -36,6 +39,43 @@ class EgresadoController extends Controller
         }
 
         $egresados = $query->limit(500)->get()->map(function ($e) {
+            // Obtener encuestas únicas contestadas por el egresado (dinámicas)
+            $encuestasIds = DB::table('respuesta')
+                ->where('egresado_id', $e->id)
+                ->distinct()
+                ->pluck('encuesta_id');
+            
+            $encuestas = Encuesta::whereIn('id', $encuestasIds)
+                ->get(['id', 'nombre'])
+                ->map(fn($enc) => [
+                    'id' => $enc->id,
+                    'nombre' => $enc->nombre,
+                ]);
+
+            // Agregar Cédula de Pre-Egreso si existe
+            $cedulaPreegreso = CedulaPreegreso::where('egresado_id', $e->id)
+                ->whereNull('deleted_at')
+                ->exists();
+            
+            if ($cedulaPreegreso) {
+                $encuestas->push([
+                    'id' => 'preegreso',
+                    'nombre' => 'Cédula de Pre-Egreso',
+                ]);
+            }
+
+            // Agregar Encuesta Laboral si existe
+            $encuestaLaboral = EncuestaLaboral::where('egresado_id', $e->id)
+                ->whereNull('deleted_at')
+                ->exists();
+            
+            if ($encuestaLaboral) {
+                $encuestas->push([
+                    'id' => 'laboral',
+                    'nombre' => 'Encuesta Laboral',
+                ]);
+            }
+
             return [
                 'id' => $e->id,
                 'matricula' => $e->matricula,
@@ -44,6 +84,8 @@ class EgresadoController extends Controller
                 'email' => $e->email,
                 'estatus' => $e->estatus?->nombre ?? 'N/D',
                 'carreras' => $e->carreras->map(fn($c) => $c->carrera?->nombre)->filter()->values(),
+                'encuestas_contestadas' => $encuestas,
+                'num_encuestas' => $encuestas->count(),
             ];
         });
 
@@ -69,6 +111,50 @@ class EgresadoController extends Controller
             },
             'user.roles'
         ])->findOrFail($id);
+
+        // Obtener encuestas contestadas por este egresado
+        $encuestasContestadas = DB::table('respuesta')
+            ->select('encuesta_id', DB::raw('MIN(creado_en) as fecha_contestada'))
+            ->where('egresado_id', $id)
+            ->groupBy('encuesta_id')
+            ->get()
+            ->map(function($r) {
+                $encuesta = Encuesta::find($r->encuesta_id);
+                return [
+                    'id' => $r->encuesta_id,
+                    'nombre' => $encuesta?->nombre ?? 'Encuesta eliminada',
+                    'fecha_contestada' => $r->fecha_contestada,
+                ];
+            });
+
+        // Agregar Cédula de Pre-Egreso si existe
+        $cedulaPreegreso = CedulaPreegreso::where('egresado_id', $id)
+            ->whereNull('deleted_at')
+            ->first();
+        
+        if ($cedulaPreegreso) {
+            $encuestasContestadas->push([
+                'id' => 'preegreso',
+                'nombre' => 'Cédula de Pre-Egreso',
+                'fecha_contestada' => $cedulaPreegreso->created_at->format('Y-m-d H:i:s'),
+            ]);
+        }
+
+        // Agregar Encuesta Laboral si existe
+        $encuestaLaboral = EncuestaLaboral::where('egresado_id', $id)
+            ->whereNull('deleted_at')
+            ->first();
+        
+        if ($encuestaLaboral) {
+            $encuestasContestadas->push([
+                'id' => 'laboral',
+                'nombre' => 'Encuesta Laboral',
+                'fecha_contestada' => $encuestaLaboral->created_at->format('Y-m-d H:i:s'),
+            ]);
+        }
+
+        // Ordenar por fecha de contestación (más reciente primero)
+        $encuestasContestadas = $encuestasContestadas->sortByDesc('fecha_contestada')->values();
 
         // Catálogos para edición
         $catalogos = [
@@ -129,6 +215,7 @@ class EgresadoController extends Controller
                 }),
                 'tiene_usuario' => $egresado->user !== null,
                 'roles_usuario' => $egresado->user?->roles->pluck('name')->toArray() ?? [],
+                'encuestas_contestadas' => $encuestasContestadas,
             ],
             'catalogos' => $catalogos,
         ]);

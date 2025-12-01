@@ -20,11 +20,12 @@ const isComunidad = computed(() => userRoles.value?.includes('Comunidad universi
 // Verificar si tiene algún rol administrativo
 const isAdmin = computed(() => isAdminGeneral.value || isAdminUnidad.value || isAdminAcademico.value);
 
-// Mostrar módulos de egresado (Perfil, Encuestas)
-// Mostrar módulos de egresado/estudiante (admins de unidad y académico ya no deben verlos)
+// Mostrar módulos de egresado/estudiante (NO mostrar para administradores)
 const showEgresadoModules = computed(() => {
-  if (isAdminUnidad.value || isAdminAcademico.value) return false; // Solo Admin General puede ver todo
-  return isEgresado.value || isEstudiante.value || isAdmin.value;
+  // Si es administrador, no mostrar módulos de egresado
+  if (isAdmin.value) return false;
+  // Solo mostrar si es egresado o estudiante
+  return isEgresado.value || isEstudiante.value;
 });
 
 // Mostrar módulos administrativos
@@ -40,14 +41,14 @@ const showAdminModules = computed(() => isAdmin.value);
       </p>
     </div>
 
-    <div class="grid gap-6" :class="showAdminModules ? 'md:grid-cols-3' : 'md:grid-cols-2'">
+    <div class="grid gap-6" :class="showAdminModules && showEgresadoModules ? 'md:grid-cols-3' : showEgresadoModules || showAdminModules ? 'md:grid-cols-1' : 'md:grid-cols-2'">
       <!-- Módulos de Egresado/Estudiante -->
-      <div v-if="showEgresadoModules" :class="showAdminModules ? 'md:col-span-2' : 'md:col-span-2'" class="flex flex-col gap-6">
+      <div v-if="showEgresadoModules" class="flex flex-col gap-6">
         <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           
-          <!-- Encuesta pre-egreso solo para estudiantes -->
+          <!-- Encuesta pre-egreso para estudiantes y egresados (consulta) -->
           <ModuleCard 
-            v-if="isEstudiante || isEgresado || isAdmin" 
+            v-if="isEstudiante || isEgresado" 
             title="Encuesta preegreso" 
             subtitle="Llena antes de egresar" 
             color="teal" 
@@ -56,7 +57,7 @@ const showAdminModules = computed(() => isAdmin.value);
           
           <!-- Encuestas solo para egresados -->
           <ModuleCard 
-            v-if="isEgresado || isAdmin" 
+            v-if="isEgresado" 
             title="Encuesta de egreso" 
             subtitle="Después de 2 años" 
             color="teal" 
@@ -64,7 +65,7 @@ const showAdminModules = computed(() => isAdmin.value);
           />
           
           <ModuleCard 
-            v-if="isEgresado || isAdmin" 
+            v-if="isEgresado" 
             title="Encuesta laboral" 
             subtitle="Seguimiento periódico" 
             color="default" 
@@ -73,7 +74,7 @@ const showAdminModules = computed(() => isAdmin.value);
           
           <!-- Acuses de seguimiento para egresados -->
           <ModuleCard 
-            v-if="isEgresado || isAdmin" 
+            v-if="isEgresado" 
             title="Acuses de seguimiento" 
             subtitle="Consulta tus encuestas" 
             color="default" 

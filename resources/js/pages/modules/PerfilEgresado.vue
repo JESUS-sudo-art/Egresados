@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { Head, router, useForm } from '@inertiajs/vue3'
+import { Head, router, useForm, Link } from '@inertiajs/vue3'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,12 @@ interface Empleo {
   fecha_fin: string | null
   sueldo: number | null
   ciudad: string | null
+}
+
+interface EncuestaContestada {
+  id: number | string
+  nombre: string
+  fecha_contestada: string | null
 }
 
 interface Egresado {
@@ -59,6 +65,7 @@ interface Egresado {
   empleos: Empleo[]
   tiene_usuario: boolean
   roles_usuario: string[]
+  encuestas_contestadas: EncuestaContestada[]
 }
 
 interface Catalogos {
@@ -77,7 +84,7 @@ interface Props {
 const props = defineProps<Props>()
 
 // Tab activa
-const activeTab = ref<'datos' | 'carreras' | 'empleos' | 'usuario'>('datos')
+const activeTab = ref<'datos' | 'carreras' | 'empleos' | 'encuestas' | 'usuario'>('datos')
 
 // Formulario de datos personales
 const formDatos = useForm({
@@ -218,6 +225,17 @@ const deleteCarrera = (carreraId: number) => {
             ]"
           >
             Empleos ({{ egresado.empleos.length }})
+          </button>
+          <button
+            @click="activeTab = 'encuestas'"
+            :class="[
+              'px-4 py-2 border-b-2 font-medium transition-colors',
+              activeTab === 'encuestas'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            ]"
+          >
+            Encuestas Contestadas ({{ egresado.encuestas_contestadas.length }})
           </button>
           <button
             @click="activeTab = 'usuario'"
@@ -487,6 +505,73 @@ const deleteCarrera = (carreraId: number) => {
             </div>
             <div v-else class="text-center py-8 text-muted-foreground">
               No tiene empleos registrados
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <!-- Tab Encuestas Contestadas -->
+      <div v-show="activeTab === 'encuestas'" class="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Encuestas Contestadas</CardTitle>
+            <CardDescription>Encuestas respondidas por el egresado</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div v-if="egresado.encuestas_contestadas.length" class="space-y-3">
+              <div
+                v-for="encuesta in egresado.encuestas_contestadas"
+                :key="encuesta.id"
+                class="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="font-semibold text-lg">{{ encuesta.nombre }}</p>
+                    <p v-if="encuesta.fecha_contestada" class="text-sm text-muted-foreground mt-1">
+                      Contestada el: {{ new Date(encuesta.fecha_contestada).toLocaleDateString('es-MX', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      }) }}
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Badge variant="default">
+                      Completada
+                    </Badge>
+                    <Link 
+                      v-if="encuesta.id === 'preegreso'"
+                      :href="`/encuesta-preegreso?egresado_id=${egresado.id}`"
+                    >
+                      <Button size="sm" variant="outline">
+                        Ver encuesta
+                      </Button>
+                    </Link>
+                    <Link 
+                      v-else-if="encuesta.id === 'laboral'"
+                      :href="`/encuesta-laboral?egresado_id=${egresado.id}`"
+                    >
+                      <Button size="sm" variant="outline">
+                        Ver encuesta
+                      </Button>
+                    </Link>
+                    <Link 
+                      v-else
+                      :href="`/encuesta/${encuesta.id}/egresado/${egresado.id}/respuestas`"
+                    >
+                      <Button size="sm" variant="outline">
+                        Ver encuesta
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center py-12 text-muted-foreground">
+              <p class="text-lg">No ha contestado ninguna encuesta</p>
+              <p class="text-sm mt-2">Las encuestas contestadas aparecerán aquí</p>
             </div>
           </CardContent>
         </Card>

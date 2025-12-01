@@ -13,11 +13,12 @@ class AdminGeneralController extends Controller
 {
     public function index()
     {
-        $usuarios = User::with('unidades')->get()->map(function ($usuario) {
+        $usuarios = User::with(['unidades', 'roles'])->get()->map(function ($usuario) {
             return [
                 'id' => $usuario->id,
                 'name' => $usuario->name,
                 'email' => $usuario->email,
+                'roles' => $usuario->roles->pluck('name')->toArray(),
                 'unidades' => $usuario->unidades->map(fn($u) => [
                     'id' => $u->id,
                     'nombre' => $u->nombre,
