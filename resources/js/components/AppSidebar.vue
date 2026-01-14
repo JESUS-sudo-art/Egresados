@@ -51,6 +51,9 @@ const mainNavItems = computed<NavItem[]>(() => {
     if (isEgresado.value || isEstudiante.value) {
         items.push({ title: 'Acuses de Seguimiento', href: '/acuses-seguimiento', icon: Shield });
     }
+    if (isEgresado.value) {
+        items.push({ title: 'Mis Respuestas Antiguas', href: '/respuestas-antiguas', icon: BookOpen });
+    }
     
     if (isAdminGeneral.value) {
         items.push({ title: 'Gestor de Usuarios', href: '/admin-general', icon: Users });

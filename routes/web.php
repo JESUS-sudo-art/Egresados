@@ -3,6 +3,68 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
+// Resetear contraseña del usuario ID 9
+Route::get('/resetear-password-9', function () {
+    $user = \App\Models\User::find(9);
+    
+    if (!$user) {
+        return response()->json(['error' => 'Usuario no encontrado'], 404);
+    }
+    
+    $newPassword = 'test123456';
+    $user->password = \Illuminate\Support\Facades\Hash::make($newPassword);
+    $user->save();
+    
+    return response()->json([
+        'success' => true,
+        'message' => 'Contraseña actualizada',
+        'id' => $user->id,
+        'email' => $user->email,
+        'new_password' => $newPassword,
+    ]);
+})->withoutMiddleware([\App\Http\Middleware\CheckPreegresoCompleted::class]);
+
+// Ver todos los usuarios
+Route::get('/ver-usuarios', function () {
+    $users = \App\Models\User::select('id', 'email', 'name')->get();
+    return response()->json($users);
+})->withoutMiddleware([\App\Http\Middleware\CheckPreegresoCompleted::class]);
+
+// Ruta temporal para crear usuario con email de Zuraima (sin middleware)
+Route::get('/crear-usuario-zura', function () {
+    $zuraEmail = 'zura_jda@hotmail.com';
+    
+    // Verificar si ya existe
+    $existingUser = \App\Models\User::where('email', $zuraEmail)->first();
+    if ($existingUser) {
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuario ya existe',
+            'email' => $existingUser->email,
+            'id' => $existingUser->id,
+        ]);
+    }
+    
+    // Crear nuevo usuario
+    $user = \App\Models\User::create([
+        'name' => 'Zuraima Ramirez Melendez',
+        'email' => $zuraEmail,
+        'password' => \Illuminate\Support\Facades\Hash::make('password123'),
+        'email_verified_at' => now(),
+    ]);
+    
+    // Asignar rol Egresados
+    $user->assignRole('Egresados');
+    
+    return response()->json([
+        'success' => true,
+        'message' => 'Usuario creado exitosamente',
+        'email' => $user->email,
+        'password' => 'password123',
+        'id' => $user->id,
+    ]);
+})->withoutMiddleware([\App\Http\Middleware\CheckPreegresoCompleted::class]);
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canRegister' => Features::enabled(Features::registration()),
@@ -47,6 +109,62 @@ Route::get('encuesta/{encuestaId}/mis-respuestas', [App\Http\Controllers\Encuest
 Route::get('encuesta/{encuestaId}/egresado/{egresadoId}/respuestas', [App\Http\Controllers\EncuestaController::class, 'respuestasDeEgresado'])
     ->name('encuesta.respuestas.egresado')
     ->middleware(['auth', 'verified', 'permission:egresados.ver_perfil']);
+
+// DEBUG - Ver información del usuario actual
+Route::get('debug-respuestas-antiguas', function () {
+    $user = \Illuminate\Support\Facades\Auth::user();
+    
+    $egresado = null;
+    $usersWithBitacoras = [];
+    
+    if ($user) {
+        $egresado = \App\Models\Egresado::where('email', $user->email)->with('bitacoras')->first();
+    }
+    
+    // Mostrar usuarios con bitácoras disponibles
+    $usersWithBitacoras = \App\Models\Egresado::with('bitacoras')
+        ->whereHas('bitacoras')
+        ->select('id', 'email', 'nombre', 'apellidos')
+        ->withCount('bitacoras')
+        ->orderBy('bitacoras_count', 'desc')
+        ->limit(20)
+        ->get()
+        ->map(fn($e) => [
+            'id' => $e->id,
+            'email' => $e->email,
+            'nombre' => $e->nombre,
+            'apellidos' => $e->apellidos,
+            'bitacoras' => $e->bitacoras_count,
+        ])->toArray();
+    
+    // Contar bitácoras del egresado actual si existe
+    $egresadoData = null;
+    if ($egresado) {
+        $egresadoData = [
+            'id' => $egresado->id,
+            'nombre' => $egresado->nombre,
+            'apellidos' => $egresado->apellidos,
+            'bitacoras_count' => $egresado->bitacoras->count(),
+        ];
+    }
+    
+    return view('debug-respuestas-antiguas', [
+        'user' => $user,
+        'egresado' => $egresadoData,
+        'usersWithBitacoras' => $usersWithBitacoras,
+    ]);
+})->middleware(['auth', 'verified'])->name('debug-respuestas-antiguas');
+
+// Respuestas antiguas migradas (sistema anterior)
+Route::get('respuestas-antiguas', [App\Http\Controllers\RespuestasAntiguasController::class, 'index'])
+    ->name('respuestas-antiguas.index')
+    ->middleware(['auth', 'verified']);
+Route::get('respuestas-antiguas/{bitacoraId}', [App\Http\Controllers\RespuestasAntiguasController::class, 'show'])
+    ->name('respuestas-antiguas.show')
+    ->middleware(['auth', 'verified']);
+Route::get('respuestas-antiguas-stats', [App\Http\Controllers\RespuestasAntiguasController::class, 'estadisticas'])
+    ->name('respuestas-antiguas.estadisticas')
+    ->middleware(['auth', 'verified', 'role:Administrador general']);
 
 // Ruta de Admin Académica con controlador - Admin Académico y Admin General
 $adminAcademicaRoute = Route::get('admin-academica', [App\Http\Controllers\AdminAcademicaController::class, 'index'])

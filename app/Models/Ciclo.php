@@ -3,11 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Ciclo extends Model
 {
-    use SoftDeletes;
     protected $table = 'ciclo';
 
     protected $fillable = [

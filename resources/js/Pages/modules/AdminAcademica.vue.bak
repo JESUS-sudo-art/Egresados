@@ -1,0 +1,206 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import AppLayout from '@/layouts/AppLayout.vue'
+import { Head, useForm } from '@inertiajs/vue3'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
+interface Unidad {
+  id: number
+  nombre: string
+  clave: string | null
+  domicilio: string | null
+  web: string | null
+  email: string | null
+  estatus: string
+}
+
+interface Carrera {
+  id: number
+  nombre: string
+  nivel: string | null
+  tipo_programa: string | null
+  estatus: string
+}
+
+interface Generacion {
+  id: number
+  nombre: string
+  estatus: string
+}
+
+interface Props {
+  unidades: Unidad[]
+  carreras: Carrera[]
+  generaciones: Generacion[]
+}
+
+const props = defineProps<Props>()
+
+// Control de pestañas
+const tabActiva = ref('unidades')
+
+// Estados de formularios
+const mostrarFormUnidad = ref(false)
+const mostrarFormCarrera = ref(false)
+const mostrarFormGeneracion = ref(false)
+
+const editandoUnidad = ref<Unidad | null>(null)
+const editandoCarrera = ref<Carrera | null>(null)
+const editandoGeneracion = ref<Generacion | null>(null)
+
+// Formularios
+const formUnidad = useForm({
+  nombre: '',
+  clave: '',
+  domicilio: '',
+  web: '',
+  email: '',
+  estatus: 'A',
+})
+
+const formCarrera = useForm({
+  nombre: '',
+  nivel: '',
+  tipo_programa: '',
+  estatus: 'A',
+})
+
+const formGeneracion = useForm({
+  nombre: '',
+  estatus: 'A',
+})
+
+// ===== UNIDADES =====
+const abrirFormUnidadCrear = () => {
+  editandoUnidad.value = null
+  formUnidad.reset()
+  formUnidad.clearErrors()
+  mostrarFormUnidad.value = true
+}
+
+const abrirFormUnidadEditar = (unidad: Unidad) => {
+  editandoUnidad.value = unidad
+  formUnidad.nombre = unidad.nombre
+  formUnidad.clave = unidad.clave || ''
+  formUnidad.domicilio = unidad.domicilio || ''
+  formUnidad.web = unidad.web || ''
+  formUnidad.email = unidad.email || ''
+  formUnidad.estatus = unidad.estatus
+  mostrarFormUnidad.value = true
+}
+
+const cancelarUnidad = () => {
+  mostrarFormUnidad.value = false
+  formUnidad.reset()
+  formUnidad.clearErrors()
+  editandoUnidad.value = null
+}
+
+const guardarUnidad = () => {
+  if (editandoUnidad.value) {
+    formUnidad.put(`/admin-academica/unidades/${editandoUnidad.value.id}`, {
+      onSuccess: () => cancelarUnidad()
+    })
+  } else {
+    formUnidad.post('/admin-academica/unidades', {
+      onSuccess: () => cancelarUnidad()
+    })
+  }
+}
+
+const eliminarUnidad = (id: number) => {
+  if (confirm('¿Estás seguro de eliminar esta unidad?')) {
+    formUnidad.delete(`/admin-academica/unidades/${id}`)
+  }
+}
+
+// ===== CARRERAS =====
+const abrirFormCarreraCrear = () => {
+  editandoCarrera.value = null
+  formCarrera.reset()
+  formCarrera.clearErrors()
+  mostrarFormCarrera.value = true
+}
+
+const abrirFormCarreraEditar = (carrera: Carrera) => {
+  editandoCarrera.value = carrera
+  formCarrera.nombre = carrera.nombre
+  formCarrera.nivel = carrera.nivel || ''
+  formCarrera.tipo_programa = carrera.tipo_programa || ''
+  formCarrera.estatus = carrera.estatus
+  mostrarFormCarrera.value = true
+}
+
+const cancelarCarrera = () => {
+  mostrarFormCarrera.value = false
+  formCarrera.reset()
+  formCarrera.clearErrors()
+  editandoCarrera.value = null
+}
+
+const guardarCarrera = () => {
+  if (editandoCarrera.value) {
+    formCarrera.put(`/admin-academica/carreras/${editandoCarrera.value.id}`, {
+      onSuccess: () => cancelarCarrera()
+    })
+  } else {
+    formCarrera.post('/admin-academica/carreras', {
+      onSuccess: () => cancelarCarrera()
+    })
+  }
+}
+
+const eliminarCarrera = (id: number) => {
+  if (confirm('¿Estás seguro de eliminar esta carrera?')) {
+    formCarrera.delete(`/admin-academica/carreras/${id}`)
+  }
+}
+
+// ===== GENERACIONES =====
+const abrirFormGeneracionCrear = () => {
+  editandoGeneracion.value = null
+  formGeneracion.reset()
+  formGeneracion.clearErrors()
+  mostrarFormGeneracion.value = true
+}
+
+const abrirFormGeneracionEditar = (generacion: Generacion) => {
+  editandoGeneracion.value = generacion
+  formGeneracion.nombre = generacion.nombre
+  formGeneracion.estatus = generacion.estatus
+  mostrarFormGeneracion.value = true
+}
+
+const cancelarGeneracion = () => {
+  mostrarFormGeneracion.value = false
+  formGeneracion.reset()
+  formGeneracion.clearErrors()
+  editandoGeneracion.value = null
+}
+
+const guardarGeneracion = () => {
+  if (editandoGeneracion.value) {
+    formGeneracion.put(`/admin-academica/generaciones/${editandoGeneracion.value.id}`, {
+      onSuccess: () => cancelarGeneracion()
+    })
+  } else {
+    formGeneracion.post('/admin-academica/generaciones', {
+      onSuccess: () => cancelarGeneracion()
+    })
+  }
+}
+
+const eliminarGeneracion = (id: number) => {
+  if (confirm('¿Estás seguro de eliminar esta generación?')) {
+    formGeneracion.delete(`/admin-academica/generaciones/${id}`)
+  }
+}
+
+const getEstatusLabel = (estatus: string) => estatus === 'A' ? 'Activo' : 'Inactivo'
+const getEstatusClass = (estatus: string) => estatus === 'A' 
+  ? 'bg-green-100 text-green-800' 
+  : 'bg-red-100 text-red-800'
+</script>
