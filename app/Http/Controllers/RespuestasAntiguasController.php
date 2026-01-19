@@ -112,24 +112,34 @@ class RespuestasAntiguasController extends Controller
     {
         $user = Auth::user();
         
-        // Buscar el egresado asociado al usuario
-        $egresado = Egresado::where('email', $user->email)->first();
-        
-        if (!$egresado) {
-            return redirect()->route('dashboard')
-                ->with('error', 'No se encontró tu perfil de egresado');
-        }
-
         // Verificar si es una respuesta nueva (formato: nueva_X) o antigua (número)
         if (str_starts_with($bitacoraId, 'nueva_')) {
             // Es una encuesta nueva del sistema actual
             $encuestaId = (int) str_replace('nueva_', '', $bitacoraId);
             
+            // Buscar el egresado asociado al usuario
+            $egresado = Egresado::where('email', $user->email)->first();
+            
+            if (!$egresado) {
+                return redirect()->route('dashboard')
+                    ->with('error', 'No se encontró tu perfil de egresado');
+            }
+            
             return $this->mostrarRespuestasNuevas($egresado, $encuestaId);
         }
 
-        // Es una bitácora antigua migrada
-        return $this->mostrarRespuestasAntiguas($egresado, $bitacoraId);
+        // Es una bitácora antigua migrada - obtener el egresado de la bitácora
+        $bitacora = BitacoraEncuesta::with('egresado')->findOrFail($bitacoraId);
+        
+        // Verificar permisos: el usuario debe ser el egresado O tener rol de administrador
+        $esPropio = $bitacora->egresado->email === $user->email;
+        $esAdmin = $user->hasAnyRole(['Administrador general', 'Administrador unidad', 'Administrador académico']);
+        
+        if (!$esPropio && !$esAdmin) {
+            abort(403, 'No tienes permiso para ver estas respuestas');
+        }
+        
+        return $this->mostrarRespuestasAntiguas($bitacora->egresado, $bitacoraId);
     }
 
     /**
@@ -248,9 +258,30 @@ class RespuestasAntiguasController extends Controller
             }
             
             $pregunta = $respuestasPorPregunta->get($resp->pregunta_id);
+            
+            // Intentar buscar la opción por VALOR primero, luego por ID
+            $valor = $resp->respuesta;
+            if (is_numeric($valor) && $resp->pregunta) {
+                // Primero intentar buscar por valor
+                $opcion = \App\Models\Opcion::where('pregunta_id', $resp->pregunta_id)
+                    ->where('valor', $valor)
+                    ->first();
+                    
+                // Si no encuentra por valor, buscar por ID (para opciones con IDs antiguos)
+                if (!$opcion) {
+                    $opcion = \App\Models\Opcion::where('pregunta_id', $resp->pregunta_id)
+                        ->where('id', $valor)
+                        ->first();
+                }
+                    
+                if ($opcion) {
+                    $valor = $opcion->texto;
+                }
+            }
+            
             $pregunta['respuestas'][] = [
                 'tipo' => 'numerico',
-                'valor' => $resp->respuesta,
+                'valor' => $valor,
             ];
             $respuestasPorPregunta->put($resp->pregunta_id, $pregunta);
         }

@@ -87,10 +87,16 @@ class PerfilController extends Controller
             'curp' => 'nullable|string|max:18',
             'email' => 'required|email|max:150',
             'domicilio' => 'nullable|string|max:500',
+            'domicilio_actual' => 'nullable|string|max:500',
+            'facebook_url' => 'nullable|string|max:255',
             'fecha_nacimiento' => 'nullable|date',
             'estado_origen' => 'nullable|string|max:100',
             'genero_id' => 'nullable|integer',
             'estado_civil_id' => 'nullable|integer',
+            'tiene_hijos' => 'nullable|boolean',
+            'habla_lengua_indigena' => 'nullable|boolean',
+            'habla_segundo_idioma' => 'nullable|boolean',
+            'pertenece_grupo_etnico' => 'nullable|boolean',
         ]);
 
         $user = auth()->user();

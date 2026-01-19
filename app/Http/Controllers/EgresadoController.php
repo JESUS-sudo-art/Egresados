@@ -104,12 +104,18 @@ class EgresadoController extends Controller
             'genero',
             'estadoCivil',
             'estatus',
+            'unidad',
+            'carrera',
+            'academicos.unidad',
+            'academicos.carrera',
+            'academicos.generacion',
             'carreras.carrera.unidades',
             'carreras.generacion',
             'empleos' => function($query) {
                 $query->orderBy('fecha_inicio', 'desc');
             },
-            'user.roles'
+            'user.roles',
+            'bitacoras'
         ])->findOrFail($id);
 
         // Obtener encuestas contestadas por este egresado
@@ -155,6 +161,18 @@ class EgresadoController extends Controller
 
         // Ordenar por fecha de contestación (más reciente primero)
         $encuestasContestadas = $encuestasContestadas->sortByDesc('fecha_contestada')->values();
+        
+        // Agregar encuestas antiguas (bitácoras)
+        $bitacorasAntiguas = $egresado->bitacoras->map(function($bitacora) {
+            return [
+                'id' => $bitacora->id,
+                'nombre' => 'Encuesta Antigua (ID: ' . $bitacora->encuesta_id . ')',
+                'fecha_contestada' => $bitacora->fecha_inicio,
+                'tipo' => 'antigua',
+            ];
+        });
+        
+        $encuestasContestadas = $encuestasContestadas->concat($bitacorasAntiguas)->sortByDesc('fecha_contestada')->values();
 
         // Catálogos para edición
         $catalogos = [
@@ -183,6 +201,11 @@ class EgresadoController extends Controller
                 'estado_civil' => $egresado->estadoCivil?->nombre,
                 'estatus_id' => $egresado->estatus_id,
                 'estatus' => $egresado->estatus?->nombre,
+                'unidad_id' => $egresado->unidad_id,
+                'unidad' => $egresado->unidad?->nombre,
+                'carrera_id' => $egresado->carrera_id,
+                'carrera' => $egresado->carrera?->nombre,
+                'anio_egreso' => $egresado->anio_egreso,
                 'tiene_hijos' => $egresado->tiene_hijos,
                 'habla_lengua_indigena' => $egresado->habla_lengua_indigena,
                 'habla_segundo_idioma' => $egresado->habla_segundo_idioma,
@@ -200,6 +223,17 @@ class EgresadoController extends Controller
                         'fecha_ingreso' => $ec->fecha_ingreso,
                         'fecha_egreso' => $ec->fecha_egreso,
                         'tipo_egreso' => $ec->tipo_egreso,
+                    ];
+                }),
+                'academicos' => $egresado->academicos->map(function($ac) {
+                    return [
+                        'id' => $ac->id,
+                        'unidad_id' => $ac->unidad_id,
+                        'unidad_nombre' => $ac->unidad?->nombre,
+                        'carrera_id' => $ac->carrera_id,
+                        'carrera_nombre' => $ac->carrera?->nombre,
+                        'generacion_id' => $ac->generacion_id,
+                        'generacion_nombre' => $ac->generacion?->nombre,
                     ];
                 }),
                 'empleos' => $egresado->empleos->map(function($empleo) {

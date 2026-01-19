@@ -1051,4 +1051,370 @@ docker exec egresados-php find /var/www/html/resources/js/Pages -type f
 
 ---
 
-**Última actualización:** 18 de diciembre de 2025, 23:59 hrs
+## 📅 Sesión del 14 de Enero de 2026
+
+### Implementación de Sistema de Invitaciones de Administrador y Corrección de Visualización de Respuestas Antiguas
+
+#### Objetivo Principal
+1. Implementar funcionalidad de invitación de administradores por correo electrónico
+2. Corregir la visualización de respuestas antiguas que mostraban números en lugar de texto
+
+---
+
+### 1. Configuración del Sistema de Envío de Correos
+
+#### Problema Inicial: Timeout con Outlook SMTP
+
+**Configuración original:** `MAIL_MAILER=smtp` con `smtp.outlook.com:587`
+
+**Error:**
+```
+Symfony\Component\Mailer\Exception\TransportException
+Connection to "smtp.outlook.com:587" timed out.
+```
+
+**Causa:** El servidor SMTP de Outlook estaba timeando (posiblemente autenticación de dos factores requerida).
+
+#### Solución 1: Cambio a Ethereal Email (Prueba Fallida)
+
+Configuración temporal:
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.ethereal.email
+MAIL_PORT=587
+MAIL_ENCRYPTION=tls
+MAIL_USERNAME=dayne.schultz@ethereal.email
+MAIL_PASSWORD=kW8XbKwKUHhVNvXcYu
+```
+
+**Resultado:** Error de autenticación - credenciales inválidas.
+
+#### Solución 2: Cambio a Mailtrap (Evaluada)
+
+Configuración:
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=sandbox.smtp.mailtrap.io
+MAIL_PORT=587
+MAIL_USERNAME=5b74e005799178
+MAIL_PASSWORD=****8c15
+```
+
+**Limitación:** Mailtrap es solo para testing - los emails no llegan a buzones reales, solo a dashboard de Mailtrap.
+
+#### Solución Final: Gmail SMTP (Implementada)
+
+**Pasos realizados:**
+
+1. **Generar contraseña de aplicación en Google:**
+   - Ir a https://myaccount.google.com/apppasswords
+   - Seleccionar: Mail + Windows Computer
+   - Google genera contraseña de 16 caracteres
+
+2. **Configuración final en `.env`:**
+```env
+MAIL_MAILER=smtp
+MAIL_SCHEME=null
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_ENCRYPTION=tls
+MAIL_USERNAME=jortega8159@gmail.com
+MAIL_PASSWORD=zbkaerwgdmepyhea
+MAIL_FROM_ADDRESS="rsd1.desarrolloweb@uabjo.mx"
+MAIL_FROM_NAME="PISE UABJO"
+```
+
+**Ventajas:**
+- ✅ Funciona para cualquier dominio de destinatario (@gmail.com, @hotmail.com, @uabjo.mx, etc.)
+- ✅ Sin limitaciones de prueba
+- ✅ Configuración gratuita
+- ✅ Confiable y rápido
+
+**Cómo funciona:**
+- El servidor SMTP es solo el intermediario (gmail.com) que envía el email
+- El destinatario puede tener cualquier dominio (@gmail, @hotmail, @yahoo, @uabjo.mx, etc.)
+- El email llega directamente a la bandeja del destinatario
+
+### 2. Controlador de Invitaciones
+
+**Archivo:** `app/Http/Controllers/AdminInvitationController.php`
+
+**Métodos implementados:**
+
+```php
+public function store(StoreInvitationRequest $request)
+{
+    $token = Str::uuid()->toString();
+    $expires = $request->filled('days') ? now()->addDays((int)$request->days) : null;
+
+    $invitation = Invitation::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'role' => $request->role,
+        'token' => $token,
+        'expires_at' => $expires
+    ]);
+
+    // Envía correo con enlace de invitación
+    Mail::to($invitation->email)->send(new AdminInvitationMail($invitation));
+
+    return back()->with('success','Invitación enviada');
+}
+
+public function resend(Invitation $invitation)
+{
+    if($invitation->isUsed()) {
+        return back()->with('error','Ya utilizada');
+    }
+    Mail::to($invitation->email)->send(new AdminInvitationMail($invitation));
+    return back()->with('success','Invitación reenviada');
+}
+
+public function destroy(Invitation $invitation)
+{
+    $invitation->delete();
+    return back()->with('success','Invitación eliminada');
+}
+```
+
+### 3. Clase Mailable
+
+**Archivo:** `app/Mail/AdminInvitationMail.php`
+
+```php
+public function build(): self
+{
+    $url = url('/invitation/accept/'.$this->invitation->token);
+    return $this->subject('Has sido invitado como administrador')
+        ->view('emails.admin_invitation')
+        ->with([
+            'name' => $this->invitation->name,
+            'role' => $this->invitation->role,
+            'url' => $url,
+            'expires' => $this->invitation->expires_at,
+        ]);
+}
+```
+
+**Nota:** El enlace generado usa la URL base del `.env` (APP_URL).
+
+---
+
+### 4. Corrección de Visualización de Respuestas Antiguas
+
+#### Problema Identificado
+
+Las respuestas antiguas mostraban números (530, 546, 551, 612, 609) en lugar de texto de opciones.
+
+**Causa raíz:** En la base de datos antigua, las respuestas se guardaban como el **ID de la opción**, no como el **valor**.
+
+**Ejemplo:**
+```sql
+-- BD Antigua (intrespuestas)
+respuesta = 530  -- Este es el ID de opcion, no el valor
+opcion.id = 530
+opcion.valor = 1  -- El valor real es 1
+opcion.texto = "Escolarizada"
+```
+
+#### Solución Implementada
+
+**Archivo modificado:** `app/Http/Controllers/RespuestasAntiguasController.php`
+
+**Cambio en el método `show()` - búsqueda de opciones:**
+
+```php
+// Intentar buscar la opción por VALOR primero, luego por ID
+$valor = $resp->respuesta;
+if (is_numeric($valor) && $resp->pregunta) {
+    // Primero intentar buscar por valor
+    $opcion = \App\Models\Opcion::where('pregunta_id', $resp->pregunta_id)
+        ->where('valor', $valor)
+        ->first();
+        
+    // Si no encuentra por valor, buscar por ID (para opciones con IDs antiguos)
+    if (!$opcion) {
+        $opcion = \App\Models\Opcion::where('pregunta_id', $resp->pregunta_id)
+            ->where('id', $valor)
+            ->first();
+    }
+        
+    if ($opcion) {
+        $valor = $opcion->texto;
+    }
+}
+
+$pregunta['respuestas'][] = [
+    'tipo' => 'numerico',
+    'valor' => $valor,
+];
+```
+
+**Lógica:**
+1. Obtiene el valor numérico de la respuesta
+2. **Primer intento:** Busca en la tabla `opcion` donde `valor = respuesta`
+   - Esto funciona si la respuesta contiene el valor (1, 2, 3)
+3. **Segundo intento:** Si no encuentra, busca donde `id = respuesta`
+   - Esto funciona si la respuesta contiene el ID (530, 546, 551)
+4. Si encuentra la opción, reemplaza el número con el texto
+
+#### Resultados
+
+**Antes (❌ Mostraba números):**
+```
+Pregunta 148 (Modalidad): 530
+Pregunta 149 (Año ingreso): 546
+Pregunta 150 (Promedio): 551
+```
+
+**Después (✅ Muestra texto):**
+```
+Pregunta 148 (Modalidad): Escolarizada
+Pregunta 149 (Año ingreso): 2011
+Pregunta 150 (Promedio): 8.00 a 8.99
+```
+
+---
+
+### 5. Verificación de Datos
+
+**Query de validación ejecutado:**
+
+```sql
+SELECT r.respuesta, o.id, o.opcion, o.valor 
+FROM intrespuestas r 
+LEFT JOIN opciones o ON r.respuesta = o.id 
+WHERE r.preguntas_id = 148 
+LIMIT 5;
+```
+
+**Resultado de validación:**
+
+| respuesta | id  | opcion | valor |
+|-----------|-----|--------|-------|
+| 530 | 530 | Escolarizada | 1 |
+| 530 | 530 | Escolarizada | 1 |
+| 1 | 1 | NINGUNO | 1 |
+| 530 | 530 | Escolarizada | 1 |
+
+**Conclusión:** Confirmado que respuesta=530 (ID) y opcion.valor=1, requería búsqueda dual.
+
+---
+
+### 6. Archivos Modificados en Esta Sesión
+
+| Archivo | Acción | Descripción |
+|---------|--------|-------------|
+| `.env` | Modificado | Cambio MAIL_MAILER de smtp/Ethereal/Mailtrap a Gmail |
+| `app/Http/Controllers/RespuestasAntiguasController.php` | Modificado | Agregar búsqueda dual (valor + ID) para opciones |
+
+---
+
+### 7. Flujo de Invitación Completo
+
+```
+Admin accede a módulo "Invitar Administrador"
+    ↓
+Completa formulario:
+  - Nombre: Ej. "Juan Pérez"
+  - Email: Ej. "juan@gmail.com"
+  - Rol: Ej. "Administrador"
+  - Días de expiración: Ej. 7
+    ↓
+Sistema genera:
+  - token: UUID único
+  - expires_at: now() + 7 días
+  - crea registro en tabla invitations
+    ↓
+Envío de correo:
+  - Servidor SMTP: smtp.gmail.com:587
+  - De: rsd1.desarrolloweb@uabjo.mx
+  - Para: juan@gmail.com (cualquier dominio)
+  - Asunto: "Has sido invitado como administrador"
+  - Cuerpo: Contiene enlace /invitation/accept/{token}
+    ↓
+Usuario recibe email en su bandeja
+    ↓
+Usuario hace clic en enlace
+    ↓
+Sistema valida token (existe, no expirado, no usado)
+    ↓
+Muestra formulario de registro como administrador
+    ↓
+Usuario completa registro
+    ↓
+Invitación marcada como usada
+    ↓
+Usuario ahora es administrador
+```
+
+---
+
+### 8. Resumen de Cambios
+
+**Funcionalidad de Invitaciones:**
+- ✅ Envío de correos mediante Gmail SMTP
+- ✅ Generación de tokens UUID únicos
+- ✅ Expiración configurable de invitaciones
+- ✅ Reenvío de invitaciones no utilizadas
+- ✅ Eliminación de invitaciones caducadas
+
+**Corrección de Respuestas Antiguas:**
+- ✅ Búsqueda dual de opciones (por valor e ID)
+- ✅ Todas las respuestas antiguas ahora muestran texto
+- ✅ Compatible con ambos formatos de datos
+
+---
+
+### 9. Próximos Pasos Sugeridos
+
+1. **Validación de emails:**
+   - Implementar verificación de email válido
+   - Resaltar en formulario si email ya existe como usuario
+
+2. **Mejoras de seguridad:**
+   - Limitar intentos de invitación por IP
+   - Registrar auditoría de invitaciones enviadas
+   - Notificar al admin si invitación es aceptada
+
+3. **Mejoras UX:**
+   - Agregar vista de invitaciones pendientes
+   - Mostrar historial de invitaciones enviadas
+   - Panel de estado de roles asignados
+
+4. **Optimizaciones:**
+   - Cache de opciones frecuentes
+   - Query optimization para búsqueda de opciones
+
+---
+
+**Última actualización:** 14 de enero de 2026, 18:30 hrs
+
+
+---
+
+## 📅 Sesión del 16 de Enero de 2026
+
+### Cambios Realizados
+
+1. **Generación de Código QR (general):**
+    - Librería instalada: `endroid/qr-code` v6.0.9.
+    - Controlador `QrCodeController` con rutas públicas: `/qr-code/generate`, `/qr-code/download`, `/qr-code/share` y vista admin en `/admin/qr-code`.
+    - Vista Inertia: `resources/js/Pages/admin/QrCode.vue` con descargas (alta resolución y compartir) e impresión.
+    - Menú sidebar: agregado enlace “Código QR” (solo Admin General).
+    - APP_URL se mantuvo en `http://egresados.test`; se retiró la exposición del puerto 8080.
+
+2. **Ajustes de UI en Login:**
+    - Layout `AuthSimpleLayout.vue` rediseñado a tarjeta dividida (texto/formulario izquierda, panel visual derecha).
+    - Textos de `Login.vue` actualizados: título “Iniciar sesión” y descripción alineada al sistema de egresados.
+
+3. **Sidebar:**
+    - Ocultado el ítem “Roles”; se conserva “Asignar roles” y demás accesos de admin.
+
+### Notas y Pendientes
+
+- Si no se reflejan los cambios de login/QR en el frontend, volver a levantar Vite (`npm run dev`) y hacer hard refresh.
+- QR usa la URL de `APP_URL`; para pruebas en red local habría que apuntar APP_URL a una IP accesible y exponer el puerto en nginx.
+
+**Última actualización:** 16 de enero de 2026, 00:00 hrs
+

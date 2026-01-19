@@ -338,7 +338,15 @@ Route::middleware(['auth','verified','role:Administrador general'])->group(funct
     Route::post('admin/invitations', [App\Http\Controllers\AdminInvitationController::class, 'store'])->name('admin.invitations.store');
     Route::post('admin/invitations/{invitation}/resend', [App\Http\Controllers\AdminInvitationController::class, 'resend'])->name('admin.invitations.resend');
     Route::delete('admin/invitations/{invitation}', [App\Http\Controllers\AdminInvitationController::class, 'destroy'])->name('admin.invitations.destroy');
+    
+    // Código QR del Sistema
+    Route::get('admin/qr-code', [App\Http\Controllers\QrCodeController::class, 'index'])->name('admin.qr-code.index');
 });
+
+// Rutas públicas de códigos QR (sin autenticación para generar imágenes)
+Route::get('qr-code/generate', [App\Http\Controllers\QrCodeController::class, 'generate'])->name('qr-code.generate');
+Route::get('qr-code/download', [App\Http\Controllers\QrCodeController::class, 'download'])->name('qr-code.download');
+Route::get('qr-code/share', [App\Http\Controllers\QrCodeController::class, 'share'])->name('qr-code.share');
 
 // Aceptar invitación pública (token)
 Route::get('invitation/accept/{token}', [App\Http\Controllers\AcceptInvitationController::class, 'show'])->name('invitation.accept.show');

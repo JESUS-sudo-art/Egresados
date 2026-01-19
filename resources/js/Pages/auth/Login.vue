@@ -21,8 +21,8 @@ defineProps<{
 
 <template>
     <AuthBase
-        title="Iniciar sesión en tu cuenta"
-        description="Ingresa tu correo y contraseña para acceder"
+        title="Iniciar sesión"
+        description="Accede al Sistema de Seguimiento de Egresados UABJO"
     >
         <Head title="Iniciar sesión" />
 

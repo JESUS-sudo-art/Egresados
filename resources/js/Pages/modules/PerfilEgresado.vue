@@ -386,6 +386,36 @@ const deleteCarrera = (carreraId: number) => {
             </form>
           </CardContent>
         </Card>
+
+        <!-- Información Académica -->
+        <Card>
+          <CardHeader>
+            <CardTitle>Información Académica</CardTitle>
+            <CardDescription>Carreras y formación del egresado</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div class="space-y-4">
+              <div v-if="egresado.carreras && egresado.carreras.length > 0" class="space-y-3">
+                <div v-for="carrera in egresado.carreras" :key="carrera.id" class="border rounded-lg p-3 bg-muted/50">
+                  <div class="flex justify-between items-start gap-2">
+                    <div class="flex-1">
+                      <p class="font-semibold text-sm">{{ carrera.carrera_nombre || 'Carrera sin nombre' }}</p>
+                      <p class="text-xs text-muted-foreground">{{ carrera.generacion_nombre || 'Generación desconocida' }}</p>
+                      <div class="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                        <span v-if="carrera.fecha_ingreso">📅 Ingreso: {{ carrera.fecha_ingreso }}</span>
+                        <span v-if="carrera.fecha_egreso">✓ Egreso: {{ carrera.fecha_egreso }}</span>
+                        <span v-if="carrera.tipo_egreso">📄 Tipo: {{ carrera.tipo_egreso }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                No tiene carreras registradas
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <!-- Tab Carreras -->
@@ -555,6 +585,14 @@ const deleteCarrera = (carreraId: number) => {
                     >
                       <Button size="sm" variant="outline">
                         Ver encuesta
+                      </Button>
+                    </Link>
+                    <Link 
+                      v-else-if="encuesta.tipo === 'antigua'"
+                      :href="`/respuestas-antiguas/${encuesta.id}`"
+                    >
+                      <Button size="sm" variant="outline">
+                        Ver respuestas
                       </Button>
                     </Link>
                     <Link 

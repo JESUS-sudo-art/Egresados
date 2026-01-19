@@ -21,11 +21,17 @@ interface Egresado {
   curp: string | null;
   email: string;
   domicilio: string | null;
+  domicilio_actual: string | null;
+  facebook_url: string | null;
   fecha_nacimiento: string | null;
   estado_origen: string | null;
   genero_id: number | null;
   estado_civil_id: number | null;
   estatus_id: number | null;
+  tiene_hijos: boolean | null;
+  habla_lengua_indigena: boolean | null;
+  habla_segundo_idioma: boolean | null;
+  pertenece_grupo_etnico: boolean | null;
   genero?: { id: number; nombre: string };
   estadoCivil?: { id: number; nombre: string };
   estatus?: { id: number; nombre: string };
@@ -79,11 +85,17 @@ const formPersonales = useForm({
   curp: props.egresado?.curp || '',
   email: props.egresado?.email || '',
   domicilio: props.egresado?.domicilio || '',
+  domicilio_actual: props.egresado?.domicilio_actual || '',
+  facebook_url: props.egresado?.facebook_url || '',
   fecha_nacimiento: props.egresado?.fecha_nacimiento || '',
   estado_origen: props.egresado?.estado_origen || '',
   genero_id: props.egresado?.genero_id || null,
   estado_civil_id: props.egresado?.estado_civil_id || null,
   estatus_id: props.egresado?.estatus_id || null,
+  tiene_hijos: props.egresado?.tiene_hijos || false,
+  habla_lengua_indigena: props.egresado?.habla_lengua_indigena || false,
+  habla_segundo_idioma: props.egresado?.habla_segundo_idioma || false,
+  pertenece_grupo_etnico: props.egresado?.pertenece_grupo_etnico || false,
 });
 
 const submitPersonales = () => {
@@ -271,10 +283,26 @@ const carreraInfo = computed(() => {
                   <p class="text-xs text-muted-foreground mt-1">Este campo se establece automáticamente según tu tipo de usuario</p>
                 </div>
                 <div class="md:col-span-2">
-                  <Label for="domicilio">Domicilio</Label>
+                  <Label for="domicilio">Domicilio de Origen</Label>
                   <Input 
                     id="domicilio" 
                     v-model="formPersonales.domicilio" 
+                    placeholder="Opcional"
+                  />
+                </div>
+                <div class="md:col-span-2">
+                  <Label for="domicilio_actual">Domicilio Actual</Label>
+                  <Input 
+                    id="domicilio_actual" 
+                    v-model="formPersonales.domicilio_actual" 
+                    placeholder="Opcional"
+                  />
+                </div>
+                <div class="md:col-span-2">
+                  <Label for="facebook_url">Facebook URL</Label>
+                  <Input 
+                    id="facebook_url" 
+                    v-model="formPersonales.facebook_url" 
                     placeholder="Opcional"
                   />
                 </div>
@@ -295,6 +323,48 @@ const carreraInfo = computed(() => {
                   />
                 </div>
               </div>
+
+              <!-- Sección de Características -->
+              <div class="border-t pt-6">
+                <h3 class="text-lg font-semibold mb-4">Características Personales</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="tiene_hijos"
+                      v-model="formPersonales.tiene_hijos"
+                      class="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label for="tiene_hijos" class="!mb-0">Tiene hijos</Label>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="habla_lengua_indigena"
+                      v-model="formPersonales.habla_lengua_indigena"
+                      class="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label for="habla_lengua_indigena" class="!mb-0">Habla lengua indígena</Label>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="habla_segundo_idioma"
+                      v-model="formPersonales.habla_segundo_idioma"
+                      class="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label for="habla_segundo_idioma" class="!mb-0">Habla segundo idioma</Label>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="pertenece_grupo_etnico"
+                      v-model="formPersonales.pertenece_grupo_etnico"
+                      class="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label for="pertenece_grupo_etnico" class="!mb-0">Pertenece a grupo étnico</Label>
+                  </div>
+                </div>
               <div class="flex justify-end">
                 <Button type="submit" :disabled="formPersonales.processing">
                   {{ formPersonales.processing ? 'Guardando...' : 'Guardar Datos Personales' }}

@@ -44,12 +44,25 @@ if (props.egresados.length > 0) {
 
 const search = ref(props.filters.search || '')
 
+const onlyMatricula = ref(false)
+
 const filtrados = computed(() => {
-  if (!search.value) return props.egresados
-  const term = search.value.toLowerCase()
-  return props.egresados.filter(e =>
-    [e.nombre, e.apellidos, e.matricula, e.email].filter(Boolean).some(v => v!.toLowerCase().includes(term))
-  )
+  const base = props.egresados
+  const term = search.value.toLowerCase().trim()
+
+  let items = term
+    ? base.filter(e =>
+        [e.nombre, e.apellidos, e.matricula, e.email]
+          .filter(Boolean)
+          .some(v => v!.toLowerCase().includes(term))
+      )
+    : base
+
+  if (onlyMatricula.value) {
+    items = items.filter(e => !!(e.matricula && e.matricula.trim()))
+  }
+
+  return items
 })
 
 const submitSearch = () => {
@@ -76,7 +89,16 @@ const submitSearch = () => {
               <label class="text-sm font-medium mb-1 block">Buscar</label>
               <Input v-model="search" placeholder="Ej. Juan Pérez / 2020 / correo@..." />
             </div>
-            <Button type="submit">Aplicar</Button>
+            <div class="flex gap-2">
+              <Button type="submit">Aplicar</Button>
+              <Button
+                type="button"
+                :variant="onlyMatricula ? 'default' : 'outline'"
+                @click="onlyMatricula = !onlyMatricula"
+              >
+                {{ onlyMatricula ? 'Mostrando egresados con matrícula' : 'Ver egresados con matrícula' }}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>

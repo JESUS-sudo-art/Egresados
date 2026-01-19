@@ -94,4 +94,9 @@ class Egresado extends Model
     {
         return $this->hasMany(BitacoraEncuesta::class, 'egresado_id');
     }
+    
+    public function academicos()
+    {
+        return $this->hasMany(Academico::class, 'egresado_id');
+    }
 }
