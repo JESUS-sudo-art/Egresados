@@ -10,11 +10,19 @@ use Inertia\Inertia;
 class QrCodeController extends Controller
 {
     /**
+     * URL objetivo para el QR. Se puede sobrescribir con QR_TARGET_URL o app.qr_url.
+     */
+    private function getQrUrl(): string
+    {
+        return config('app.qr_url', env('QR_TARGET_URL', 'https://egresados.mesitest.com'));
+    }
+
+    /**
      * Muestra la vista administrativa del código QR
      */
     public function index()
     {
-        $appUrl = config('app.url');
+        $appUrl = $this->getQrUrl();
         
         return Inertia::render('admin/QrCode', [
             'appUrl' => $appUrl,
@@ -27,7 +35,7 @@ class QrCodeController extends Controller
      */
     public function generate()
     {
-        $appUrl = config('app.url');
+        $appUrl = $this->getQrUrl();
         
         // Crear el código QR
         $qrCode = new QrCode($appUrl);
@@ -43,7 +51,7 @@ class QrCodeController extends Controller
      */
     public function download()
     {
-        $appUrl = config('app.url');
+        $appUrl = $this->getQrUrl();
         
         // Crear el código QR
         $qrCode = new QrCode($appUrl);
@@ -62,7 +70,7 @@ class QrCodeController extends Controller
      */
     public function share()
     {
-        $appUrl = config('app.url');
+        $appUrl = $this->getQrUrl();
         
         // Código QR optimizado para compartir
         $qrCode = new QrCode($appUrl);

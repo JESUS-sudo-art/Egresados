@@ -20,15 +20,19 @@ interface Egresado {
   apellidos: string;
   curp: string | null;
   email: string;
+  telefono?: string | null;
   domicilio: string | null;
   fecha_nacimiento: string | null;
   estado_origen: string | null;
+  anio_egreso?: number | null;
   genero_id: number | null;
   estado_civil_id: number | null;
   estatus_id: number | null;
   genero?: { id: number; nombre: string };
   estadoCivil?: { id: number; nombre: string };
   estatus?: { id: number; nombre: string };
+  unidad?: { id: number; nombre: string };
+  carrera?: { id: number; nombre: string };
   carreras?: Array<{
     carrera?: { nombre: string };
     generacion?: { nombre: string };
@@ -78,6 +82,7 @@ const formPersonales = useForm({
   apellidos: props.egresado?.apellidos || '',
   curp: props.egresado?.curp || '',
   email: props.egresado?.email || '',
+  telefono: props.egresado?.telefono || '',
   domicilio: props.egresado?.domicilio || '',
   fecha_nacimiento: props.egresado?.fecha_nacimiento || '',
   estado_origen: props.egresado?.estado_origen || '',
@@ -89,6 +94,15 @@ const formPersonales = useForm({
 const submitPersonales = () => {
   formPersonales.post('/perfil/datos-personales', {
     preserveScroll: true,
+    onSuccess: () => {
+      // Recargar página después de éxito
+      setTimeout(() => {
+        router.reload();
+      }, 500);
+    },
+    onError: (errors) => {
+      console.error('Errores de validación:', errors);
+    },
   });
 };
 
@@ -137,6 +151,10 @@ const deleteEmpleo = (id: number) => {
   if (confirm('¿Estás seguro de eliminar este empleo?')) {
     router.delete(`/perfil/empleos/${id}`, {
       preserveScroll: true,
+      onSuccess: () => {
+        // Recargar los datos después de eliminar
+        router.reload();
+      },
     });
   }
 };
@@ -228,6 +246,16 @@ const carreraInfo = computed(() => {
                 <div>
                   <Label for="email">Email</Label>
                   <Input id="email" type="email" v-model="formPersonales.email" required />
+                </div>
+                <div>
+                  <Label for="telefono">Teléfono</Label>
+                  <Input 
+                    id="telefono" 
+                    type="tel" 
+                    v-model="formPersonales.telefono" 
+                    placeholder="10 dígitos"
+                    maxlength="20"
+                  />
                 </div>
                 <div>
                   <Label for="genero">Género</Label>

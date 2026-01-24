@@ -40,17 +40,36 @@ class EgresadoController extends Controller
 
         $egresados = $query->limit(500)->get()->map(function ($e) {
             // Obtener encuestas únicas contestadas por el egresado (dinámicas)
+            // Incluir tanto respuestas nuevas como antiguas
             $encuestasIds = DB::table('respuesta')
                 ->where('egresado_id', $e->id)
                 ->distinct()
                 ->pluck('encuesta_id');
             
+            // Encuestas nuevas
             $encuestas = Encuesta::whereIn('id', $encuestasIds)
                 ->get(['id', 'nombre'])
                 ->map(fn($enc) => [
                     'id' => $enc->id,
                     'nombre' => $enc->nombre,
+                    'tipo' => 'nueva',
                 ]);
+            
+            // Agregar encuestas antiguas de bitacora_encuesta
+            $bitacorasAntiguas = DB::table('bitacora_encuesta')
+                ->where('egresado_id', $e->id)
+                ->distinct()
+                ->pluck('encuesta_id');
+            
+            $encuestasAntiguasData = Encuesta::whereIn('id', $bitacorasAntiguas)
+                ->get(['id', 'nombre'])
+                ->map(fn($enc) => [
+                    'id' => 'antigua_' . $enc->id,
+                    'nombre' => $enc->nombre,
+                    'tipo' => 'antigua',
+                ]);
+            
+            $encuestas = $encuestas->concat($encuestasAntiguasData);
 
             // Agregar Cédula de Pre-Egreso si existe
             $cedulaPreegreso = CedulaPreegreso::where('egresado_id', $e->id)
@@ -61,6 +80,7 @@ class EgresadoController extends Controller
                 $encuestas->push([
                     'id' => 'preegreso',
                     'nombre' => 'Cédula de Pre-Egreso',
+                    'tipo' => 'especial',
                 ]);
             }
 
@@ -73,6 +93,7 @@ class EgresadoController extends Controller
                 $encuestas->push([
                     'id' => 'laboral',
                     'nombre' => 'Encuesta Laboral',
+                    'tipo' => 'especial',
                 ]);
             }
 
@@ -162,11 +183,12 @@ class EgresadoController extends Controller
         // Ordenar por fecha de contestación (más reciente primero)
         $encuestasContestadas = $encuestasContestadas->sortByDesc('fecha_contestada')->values();
         
-        // Agregar encuestas antiguas (bitácoras)
+        // Agregar encuestas antiguas (bitácoras) con nombres reales
         $bitacorasAntiguas = $egresado->bitacoras->map(function($bitacora) {
+            $encuesta = Encuesta::find($bitacora->encuesta_id);
             return [
-                'id' => $bitacora->id,
-                'nombre' => 'Encuesta Antigua (ID: ' . $bitacora->encuesta_id . ')',
+                'id' => 'antigua_' . $bitacora->id,
+                'nombre' => $encuesta?->nombre ?? 'Encuesta Antigua (ID: ' . $bitacora->encuesta_id . ')',
                 'fecha_contestada' => $bitacora->fecha_inicio,
                 'tipo' => 'antigua',
             ];

@@ -24,6 +24,10 @@ class CheckPreegresoCompleted
             // Permitir acceso a la ruta de pre-egreso, respuestas antiguas y rutas de settings
             if ($request->routeIs('encuesta-preegreso') || 
                 $request->routeIs('cedula-preegreso.store') ||
+                $request->routeIs('perfil.update-datos') ||
+                $request->routeIs('perfil.store-empleo') ||
+                $request->routeIs('perfil.update-empleo') ||
+                $request->routeIs('perfil.delete-empleo') ||
                 $request->routeIs('debug-respuestas-antiguas') ||
                 $request->routeIs('respuestas-antiguas.index') ||
                 $request->routeIs('respuestas-antiguas.show') ||

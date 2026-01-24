@@ -22,6 +22,7 @@ class Egresado extends Model
         'domicilio',
         'domicilio_actual',
         'email',
+        'telefono',
         'estado_civil_id',
         'tiene_hijos',
         'habla_lengua_indigena',

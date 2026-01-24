@@ -29,6 +29,10 @@ class CedulaPreegresoController extends Controller
         
         $cedulaExistente = null;
         if ($egresado) {
+            // Formatear fecha de nacimiento para inputs type="date" si se usa en la vista
+            if ($egresado->fecha_nacimiento) {
+                $egresado->fecha_nacimiento = $egresado->fecha_nacimiento->format('Y-m-d');
+            }
             $cedulaExistente = CedulaPreegreso::where('egresado_id', $egresado->id)->first();
         }
         

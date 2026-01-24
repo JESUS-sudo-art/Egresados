@@ -112,7 +112,7 @@ class RespuestasAntiguasController extends Controller
     {
         $user = Auth::user();
         
-        // Verificar si es una respuesta nueva (formato: nueva_X) o antigua (número)
+            // Verificar si es una respuesta nueva (formato: nueva_X) o antigua (número o antigua_X)
         if (str_starts_with($bitacoraId, 'nueva_')) {
             // Es una encuesta nueva del sistema actual
             $encuestaId = (int) str_replace('nueva_', '', $bitacoraId);
@@ -128,8 +128,13 @@ class RespuestasAntiguasController extends Controller
             return $this->mostrarRespuestasNuevas($egresado, $encuestaId);
         }
 
-        // Es una bitácora antigua migrada - obtener el egresado de la bitácora
-        $bitacora = BitacoraEncuesta::with('egresado')->findOrFail($bitacoraId);
+        // Es una bitácora antigua migrada - extraer el ID real si tiene prefijo
+        $realBitacoraId = $bitacoraId;
+        if (str_starts_with($bitacoraId, 'antigua_')) {
+            $realBitacoraId = (int) str_replace('antigua_', '', $bitacoraId);
+        }
+        
+        $bitacora = BitacoraEncuesta::with('egresado')->findOrFail($realBitacoraId);
         
         // Verificar permisos: el usuario debe ser el egresado O tener rol de administrador
         $esPropio = $bitacora->egresado->email === $user->email;
@@ -139,7 +144,7 @@ class RespuestasAntiguasController extends Controller
             abort(403, 'No tienes permiso para ver estas respuestas');
         }
         
-        return $this->mostrarRespuestasAntiguas($bitacora->egresado, $bitacoraId);
+        return $this->mostrarRespuestasAntiguas($bitacora->egresado, $realBitacoraId);
     }
 
     /**
